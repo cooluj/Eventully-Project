@@ -248,28 +248,6 @@ def smart_match_clubs(categories, major, time_commitment):
 
 ---
 
-## 🎬 Video Demo (Rubric: Video - 20pts)
-
-**Script** (1:30 total):
-
-**0:00-0:20 - Problem & Solution**
-"UW has 1,231 registered student clubs. That's overwhelming! Eventully uses data processing and AI to match you with the perfect clubs. Here's how it works."
-
-**0:20-0:50 - Demo Matching**
-"First, select categories that interest you - I'll choose Engineering/Tech and Business. Add my major - Computer Science. Now watch what happens..."
-[Show results page]
-"It found 87 clubs! Each has a match score explaining why it's relevant. This Robotics club is a 95% match because it's Engineering/Tech AND relates to my CS major."
-
-**0:50-1:15 - Browse & Features**
-"I can browse all 1,231 clubs, search by name, filter by category. Let me join this club..."
-[Join club, go to dashboard]
-"Now my dashboard shows my clubs and upcoming events. I can add events to my Google Calendar with one click."
-
-**1:15-1:30 - Technical Highlight**
-"Behind the scenes: Pandas processes 1,200+ clubs, Flask powers the web app, and a multi-factor algorithm scores matches. This handles real data at scale with a professional UI."
-
----
-
 ## 🚀 How to Run
 
 ### Prerequisites:
