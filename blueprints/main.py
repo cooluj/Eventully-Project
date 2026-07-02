@@ -9,6 +9,13 @@ from models import Club, Event, Membership, UserPreference
 bp = Blueprint("main", __name__)
 
 
+@bp.route("/healthz")
+def healthz():
+    # Deliberately touches no database: uptime pings keep the web dyno warm
+    # without waking the (compute-metered) Postgres instance.
+    return {"status": "ok"}, 200
+
+
 @bp.route("/")
 def index():
     if current_user.is_authenticated:
@@ -24,9 +31,12 @@ def index():
         "total_clubs": Club.query.count(),
         "total_events": Event.query.count(),
         "categories": len(category_counts),
-        "top_categories": dict(category_counts[:5]),
+        "top_categories": dict(category_counts[:8]),
     }
-    return render_template("landing.html", stats=stats)
+    ticker_clubs = [
+        c.name for c in Club.query.order_by(func.random()).limit(18).all()
+    ]
+    return render_template("landing.html", stats=stats, ticker_clubs=ticker_clubs)
 
 
 @bp.route("/onboarding", methods=["GET", "POST"])

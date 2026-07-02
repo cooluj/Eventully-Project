@@ -10,14 +10,14 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
-    healthCheckPath: /
+    healthCheckPath: /healthz
     envVars:
       - key: SECRET_KEY
         generateValue: true
+      # Point this at an external Postgres (e.g. Neon free tier — Render's own
+      # free Postgres is deleted 30 days after creation). Set in the dashboard.
       - key: DATABASE_URL
-        fromDatabase:
-          name: eventully-db
-          property: connectionString
+        sync: false
       - key: FLASK_DEBUG
         value: "false"
       - key: SECURE_COOKIES

@@ -5,14 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Eventully{% endblock %} · Eventully</title>
   <meta name="description" content="Discover UW's 1,200+ student clubs, matched to what you actually care about.">
+  <meta name="theme-color" content="#4b2e83">
+  <meta property="og:title" content="Eventully — find your people at UW">
+  <meta property="og:description" content="Every registered UW club, matched to your interests, major, and schedule. Officers can claim their club and post events.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234b2e83'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-style='italic' font-weight='700' font-size='40' fill='%23f4b62a' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <header class="site-header">
     <div class="container nav">
       <a class="brand" href="{{ url_for('main.index') }}">
+        <span class="brand-dot" aria-hidden="true">e</span>
         <span class="brand-mark">Eventully</span>
         <span class="brand-tag">UW Directory</span>
       </a>
@@ -55,9 +61,15 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; width:100%;">
-      <span>Eventully · Built for UW students, by a UW student.</span>
-      <span>1,231 clubs indexed · Not officially affiliated with the University of Washington</span>
+    <div class="container footer-grid">
+      <div>
+        <span class="footer-brand">Event<em>ully</em></span>
+        <span>Built for UW students, by a UW student.</span>
+      </div>
+      <div style="text-align:right;">
+        <span class="colophon">1,231 clubs indexed · Est. 2026 · Seattle, WA</span><br>
+        <span class="colophon">Not officially affiliated with the University of Washington</span>
+      </div>
     </div>
   </footer>
 </body>

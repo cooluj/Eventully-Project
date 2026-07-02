@@ -3,18 +3,23 @@
 
 {% block content %}
 <section class="hero">
+  <div class="stamp" aria-hidden="true">
+    <span>Univ. of</span>
+    <strong>UW ✦ SEA</strong>
+    <span>Washington</span>
+  </div>
   <div class="container hero-grid">
     <div>
       <span class="eyebrow">No. 001 — Orientation</span>
-      <h1>UW has {{ stats.total_clubs }} clubs.<br>Eventully finds yours.</h1>
-      <p class="hero-sub">Every registered student organization at UW, cross-referenced against your major, your interests, and how much time you actually have. No more scrolling a spreadsheet of 1,200 names.</p>
+      <h1>UW has {{ stats.total_clubs }} clubs.<br>We find <span class="accent-i">yours</span>.</h1>
+      <p class="hero-sub">Every registered student organization on campus, cross-referenced against your major, your interests, and how much time you actually have. No more scrolling a spreadsheet of 1,200 names.</p>
       <div class="hero-actions">
-        <a href="{{ url_for('auth.register') }}" class="btn btn-gold">Start matching</a>
-        <a href="{{ url_for('auth.login') }}" class="btn btn-outline">I already have an account</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-gold">Start matching →</a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline">I have an account</a>
       </div>
     </div>
     <div class="route-card">
-      <span class="eyebrow" style="margin-bottom:16px; display:inline-flex;">Sample route</span>
+      <span class="eyebrow" style="margin-bottom:16px; display:inline-flex;">How it works</span>
       <ul class="route-list">
         <li class="route-item">
           <strong>Tell us what you're into</strong>
@@ -33,19 +38,28 @@
   </div>
 </section>
 
+{% if ticker_clubs %}
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    {% for name in ticker_clubs %}<span>{{ name }}</span>{% endfor %}
+    {% for name in ticker_clubs %}<span>{{ name }}</span>{% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <section class="stat-strip">
   <div class="container" style="display:contents;">
-    <div class="stat"><span class="stat-num mono">{{ stats.total_clubs }}</span><span class="stat-label">Clubs indexed</span></div>
-    <div class="stat"><span class="stat-num mono">{{ stats.categories }}</span><span class="stat-label">Categories</span></div>
-    <div class="stat"><span class="stat-num mono">{{ stats.total_events }}</span><span class="stat-label">Live events</span></div>
-    <div class="stat"><span class="stat-num mono">.edu</span><span class="stat-label">Verified students</span></div>
+    <div class="stat"><span class="stat-num">{{ stats.total_clubs }}</span><span class="stat-label">Clubs indexed</span></div>
+    <div class="stat"><span class="stat-num">{{ stats.categories }}</span><span class="stat-label">Categories</span></div>
+    <div class="stat"><span class="stat-num">{{ stats.total_events }}</span><span class="stat-label">Live events</span></div>
+    <div class="stat"><span class="stat-num">.edu</span><span class="stat-label">Verified students</span></div>
   </div>
 </section>
 
 <section class="section container">
   <div class="section-head">
     <div>
-      <span class="eyebrow">By the numbers</span>
+      <span class="eyebrow">The catalog</span>
       <h2>Where students are already looking</h2>
     </div>
   </div>
@@ -57,13 +71,13 @@
 </section>
 
 <section class="section container">
-  <div class="panel" style="display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
+  <div class="panel panel-dashed" style="display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
     <div>
       <span class="eyebrow">Run a club?</span>
       <h3 style="margin:6px 0 0;">Claim your club's listing</h3>
-      <p class="muted" style="margin:6px 0 0; max-width:50ch;">Officers can claim their organization, edit its description, and post real events students can RSVP to.</p>
+      <p class="muted" style="margin:6px 0 0; max-width:50ch;">Officers can claim their organization, edit its description, and post real events students can RSVP to — free, in about two minutes.</p>
     </div>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-outline">Claim a club</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Claim a club</a>
   </div>
 </section>
 {% endblock %}
