@@ -4,6 +4,7 @@
 {% block content %}
 <section class="section container">
   <form class="form-card" method="POST" action="{{ url_for('auth.register') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <span class="eyebrow">Registration card</span>
     <h2 style="margin-top:10px;">Create your account</h2>
     <p class="muted" style="margin-bottom:24px;">Students and club officers use the same login.</p>

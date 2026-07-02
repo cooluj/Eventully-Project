@@ -1,9 +1,10 @@
 import os
 
-from flask import Flask, render_template
+from flask import Flask, flash, redirect, render_template, request, url_for
+from flask_wtf.csrf import CSRFError
 
 from config import Config
-from extensions import db, login_manager
+from extensions import csrf, db, login_manager
 
 
 def create_app(config_class=Config):
@@ -12,6 +13,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     from models import User
 
@@ -54,6 +56,18 @@ def create_app(config_class=Config):
     def server_error(e):
         return render_template("500.html"), 500
 
+    @app.errorhandler(CSRFError)
+    def csrf_error(e):
+        flash("Your session expired — please try that again.", "error")
+        return redirect(request.referrer or url_for("main.index"))
+
+    @app.after_request
+    def security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        return response
+
     @app.cli.command("seed-db")
     def seed_db_command():
         """Load clubs_categorized.csv into the database (skips clubs that already exist)."""
@@ -62,17 +76,31 @@ def create_app(config_class=Config):
             count = seed_clubs()
             print(f"Seeded {count} new clubs.")
 
+    if app.config["AUTO_SEED"]:
+        bootstrap_database(app)
+
     return app
+
+
+def bootstrap_database(app):
+    """Create tables and load the club directory if the database is empty.
+
+    Runs at import time so gunicorn deploys (no shell, no __main__ block)
+    come up working. Both steps are idempotent; races between workers are
+    harmless because seeding skips existing rows.
+    """
+    with app.app_context():
+        db.create_all()
+        from seed import seed_clubs
+        try:
+            seed_clubs()
+        except Exception:
+            app.logger.exception("Database seeding failed; continuing with what exists.")
 
 
 app = create_app()
 
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-        from seed import seed_clubs
-        seed_clubs()
-
     port = int(os.environ.get("PORT", 5050))
     debug = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
     app.run(host="0.0.0.0", port=port, debug=debug)

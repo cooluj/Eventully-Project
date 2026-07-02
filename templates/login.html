@@ -4,6 +4,7 @@
 {% block content %}
 <section class="section container">
   <form class="form-card" method="POST" action="{{ url_for('auth.login') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <span class="eyebrow">Welcome back</span>
     <h2 style="margin-top:10px;">Log in</h2>
 

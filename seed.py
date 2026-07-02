@@ -46,8 +46,9 @@ def seed_clubs():
 
     db.session.commit()
 
-    # Demo account
-    if not User.query.filter_by(email="demo@uw.edu").first():
+    # Demo account (publicly documented password — keep out of production)
+    from flask import current_app
+    if current_app.config["SEED_DEMO_ACCOUNT"] and not User.query.filter_by(email="demo@uw.edu").first():
         demo = User(email="demo@uw.edu", name="Demo Student", university="University of Washington")
         demo.set_password("demopass123")
         db.session.add(demo)

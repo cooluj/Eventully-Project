@@ -76,35 +76,40 @@ Set these in `.env` locally, or in your host's dashboard when deploying:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `SECRET_KEY` | Signs session cookies. **Must** be a real random value in production. | dev placeholder |
+| `SECRET_KEY` | Signs session cookies + CSRF tokens. **Must** be a real random value in production. | dev placeholder |
 | `DATABASE_URL` | Set to a Postgres URL to move off SQLite (recommended once you have real users — see below). | local SQLite file |
 | `ADMIN_EMAILS` | Comma-separated emails allowed to approve club claims. | `demo@uw.edu` |
 | `REQUIRE_EDU_EMAIL` | Set `false` to allow non-`.edu` signups (useful for demoing outside UW). | `true` |
 | `FLASK_DEBUG` | Never `true` in production. | `true` locally |
+| `SECURE_COOKIES` | Set `true` in production (HTTPS) — marks session cookies Secure. | `false` |
+| `AUTO_SEED` | Create tables + load the club directory on boot. Makes fresh deploys work with zero shell access. | `true` |
+| `SEED_DEMO_ACCOUNT` | Seeds `demo@uw.edu`. **Set `false` in production** — its password is public. | `true` |
 
-## Deploying it for real
+## Security
 
-**On SQLite and hosting:** SQLite is a single file on disk. Most free/cheap hosts (Render, Railway, Fly.io) wipe the filesystem on every deploy or restart unless you attach persistent storage — so SQLite will lose data on those tiers eventually. For a portfolio piece with real users, the cleanest path is:
+- All forms are CSRF-protected (Flask-WTF); passwords are hashed with PBKDF2-SHA256.
+- Session/remember cookies are HttpOnly + SameSite=Lax, and Secure when `SECURE_COOKIES=true`.
+- Security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) on every response.
+- Officer routes verify club ownership; admin routes verify against `ADMIN_EMAILS`.
 
-1. Deploy on **Render.com** (has a real free Postgres tier) — recommended.
-2. Set `DATABASE_URL` to the Postgres URL Render gives you. The app already handles both SQLite and Postgres with no code changes.
+## Tests
 
-### Steps on Render
+```bash
+.venv/bin/python -m pytest tests/
+```
 
-1. Push this project to a GitHub repo.
-2. In Render: **New → Web Service**, connect the repo.
-3. Build command: `pip install -r requirements.txt`
-4. Start command: `gunicorn app:app`
-5. Add environment variables: `SECRET_KEY` (generate one), `ADMIN_EMAILS` (your email), `FLASK_DEBUG=false`.
-6. **New → PostgreSQL** (free tier), copy its "Internal Connection String" into the web service's `DATABASE_URL` variable.
-7. After the first deploy, open the Render shell for your service and run:
-   ```bash
-   flask --app app seed-db
-   ```
-   This loads all 1,231 clubs into the new database (safe to re-run — it skips clubs that already exist).
-8. Your app is live at the `.onrender.com` URL Render gives you. Add a custom domain under the service's Settings if you want one.
+Twelve end-to-end tests cover registration, login, onboarding + matching, join/leave, RSVP + capacity limits, the full claim → approve → officer lifecycle, permission walls, and CSRF rejection.
 
-Railway and Fly.io work the same way — Postgres add-on, set `DATABASE_URL`, deploy.
+## Deploying it for real (one click)
+
+The repo includes a **`render.yaml` Blueprint**. On [Render.com](https://render.com):
+
+1. Push this repo to GitHub.
+2. **New → Blueprint**, connect the repo. Render provisions the web service + a free Postgres database, generates `SECRET_KEY`, and wires everything automatically.
+3. When prompted, set `ADMIN_EMAILS` to **your** email — that's who approves club claims.
+4. First boot auto-creates tables and loads all 1,231 clubs (`AUTO_SEED`). Your app is live at the `.onrender.com` URL; add a custom domain in Settings if you want one.
+
+Railway and Fly.io also work: add a Postgres add-on, set `DATABASE_URL` and the env vars above, start command `gunicorn app:app`.
 
 ## Notes for future work
 

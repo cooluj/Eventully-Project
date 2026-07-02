@@ -8,6 +8,8 @@
   <p class="muted">This takes about 30 seconds. You can change these anytime.</p>
 
   <form method="POST" action="{{ url_for('main.onboarding') }}" class="panel" style="margin-top:24px;">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field">
       <label>What are you interested in? <span class="muted" style="font-weight:400;">(pick as many as you like)</span></label>
       <div class="category-grid" style="margin-top:8px;">

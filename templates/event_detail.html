@@ -23,6 +23,7 @@
 
     <div class="hero-actions">
       <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn {{ 'btn-outline' if is_rsvpd else 'btn-gold' }}"
           {% if not is_rsvpd and event.attendee_count >= event.capacity %}disabled{% endif %}>
           {% if is_rsvpd %}Cancel RSVP{% elif event.attendee_count >= event.capacity %}Event full{% else %}RSVP{% endif %}

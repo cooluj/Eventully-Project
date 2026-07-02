@@ -4,6 +4,7 @@
 {% block content %}
 <section class="section container">
   <form class="form-card" method="POST" style="max-width:560px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <span class="eyebrow">{{ club.name }}</span>
     <h2 style="margin-top:10px;">{{ 'Edit event' if event else 'Post a new event' }}</h2>
 

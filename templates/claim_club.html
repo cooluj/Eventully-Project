@@ -4,6 +4,7 @@
 {% block content %}
 <section class="section container">
   <form class="form-card" method="POST" style="max-width:520px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <span class="eyebrow">Officer verification</span>
     <h2 style="margin-top:10px;">Claim {{ club.name }}</h2>
     <p class="muted">Tell us about your role so we can verify you're actually with this club before handing over the listing. A site admin reviews every request.</p>

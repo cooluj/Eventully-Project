@@ -26,10 +26,12 @@
     <div class="hero-actions" style="margin-top:24px;">
       {% if is_member %}
         <form method="POST" action="{{ url_for('clubs.leave', club_id=club.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-outline">Leave club</button>
         </form>
       {% else %}
         <form method="POST" action="{{ url_for('clubs.join', club_id=club.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-gold">Join club</button>
         </form>
       {% endif %}
