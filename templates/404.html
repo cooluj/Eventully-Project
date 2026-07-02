@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block content %}
+<section class="section container">
+  <div class="empty-state panel">
+    <span class="eyebrow">Error 404</span>
+    <h3>That page isn't in the directory</h3>
+    <p>The club, event, or page you're looking for doesn't exist or was moved.</p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-gold">Back to Eventully</a>
+  </div>
+</section>
+{% endblock %}

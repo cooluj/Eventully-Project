@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Tell us about you{% endblock %}
+
+{% block content %}
+<section class="section container" style="max-width:720px;">
+  <span class="eyebrow">Preference card</span>
+  <h2 style="margin-top:10px;">A few questions before we match you</h2>
+  <p class="muted">This takes about 30 seconds. You can change these anytime.</p>
+
+  <form method="POST" action="{{ url_for('main.onboarding') }}" class="panel" style="margin-top:24px;">
+    <div class="field">
+      <label>What are you interested in? <span class="muted" style="font-weight:400;">(pick as many as you like)</span></label>
+      <div class="category-grid" style="margin-top:8px;">
+        {% for cat in categories %}
+          <div class="category-check">
+            <input type="checkbox" id="cat-{{ loop.index }}" name="categories" value="{{ cat }}">
+            <label for="cat-{{ loop.index }}">{{ cat }}</label>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="major">What's your major?</label>
+      <select id="major" name="major">
+        <option value="">Prefer not to say</option>
+        {% for m in majors %}
+          <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label>How much time can you commit?</label>
+      <div class="radio-cards">
+        <div class="radio-card">
+          <input type="radio" id="low" name="time_commitment" value="low">
+          <label for="low">Low key<br><span class="muted" style="font-weight:400; font-size:0.78rem;">drop in when I can</span></label>
+        </div>
+        <div class="radio-card">
+          <input type="radio" id="medium" name="time_commitment" value="medium">
+          <label for="medium">Regular<br><span class="muted" style="font-weight:400; font-size:0.78rem;">weekly meetings</span></label>
+        </div>
+        <div class="radio-card">
+          <input type="radio" id="high" name="time_commitment" value="high">
+          <label for="high">All in<br><span class="muted" style="font-weight:400; font-size:0.78rem;">competitive / team</span></label>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-gold btn-block">Show me my matches</button>
+  </form>
+</section>
+{% endblock %}

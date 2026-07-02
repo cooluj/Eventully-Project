@@ -1,7 +1,0 @@
-This project had a good amount of help from AI tools.
-Like ChatGPT and Claude. Which i used as a learning resource throughout the process.
-AI helped me make the matching algorithm for finding the best fit for clubs.
-AI also helped with the UI to help make it nicer and more polished
-While AI contributed to specific code snippets and design improvements.
-I made all of the key decisions, assembled the project,
-Integrated components, Tested the full system, and ensured the final application works

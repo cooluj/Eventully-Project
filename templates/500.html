@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Something broke{% endblock %}
+{% block content %}
+<section class="section container">
+  <div class="empty-state panel">
+    <span class="eyebrow">Error 500</span>
+    <h3>Something went wrong on our end</h3>
+    <p>Try again in a moment. If it keeps happening, let us know.</p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-gold">Back to Eventully</a>
+  </div>
+</section>
+{% endblock %}

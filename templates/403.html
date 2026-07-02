@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Not allowed{% endblock %}
+{% block content %}
+<section class="section container">
+  <div class="empty-state panel">
+    <span class="eyebrow">Error 403</span>
+    <h3>You don't have access to this page</h3>
+    <p>This area is limited to the club's officer or site admins.</p>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-gold">Back to dashboard</a>
+  </div>
+</section>
+{% endblock %}

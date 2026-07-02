@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Find your people at UW{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <span class="eyebrow">No. 001 — Orientation</span>
+      <h1>UW has {{ stats.total_clubs }} clubs.<br>Eventully finds yours.</h1>
+      <p class="hero-sub">Every registered student organization at UW, cross-referenced against your major, your interests, and how much time you actually have. No more scrolling a spreadsheet of 1,200 names.</p>
+      <div class="hero-actions">
+        <a href="{{ url_for('auth.register') }}" class="btn btn-gold">Start matching</a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline">I already have an account</a>
+      </div>
+    </div>
+    <div class="route-card">
+      <span class="eyebrow" style="margin-bottom:16px; display:inline-flex;">Sample route</span>
+      <ul class="route-list">
+        <li class="route-item">
+          <strong>Tell us what you're into</strong>
+          <span>Pick a few categories — Engineering/Tech, Arts, Service, whatever fits.</span>
+        </li>
+        <li class="route-item">
+          <strong>We score every club</strong>
+          <span>Category fit, major relevance, and time commitment, weighted and ranked.</span>
+        </li>
+        <li class="route-item">
+          <strong>You get a short list</strong>
+          <span>Perfect / great / good matches, with the reasoning shown, not hidden.</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="stat-strip">
+  <div class="container" style="display:contents;">
+    <div class="stat"><span class="stat-num mono">{{ stats.total_clubs }}</span><span class="stat-label">Clubs indexed</span></div>
+    <div class="stat"><span class="stat-num mono">{{ stats.categories }}</span><span class="stat-label">Categories</span></div>
+    <div class="stat"><span class="stat-num mono">{{ stats.total_events }}</span><span class="stat-label">Live events</span></div>
+    <div class="stat"><span class="stat-num mono">.edu</span><span class="stat-label">Verified students</span></div>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">By the numbers</span>
+      <h2>Where students are already looking</h2>
+    </div>
+  </div>
+  <div class="category-strip">
+    {% for cat, count in stats.top_categories.items() %}
+      <span class="chip">{{ cat }} <span class="mono muted">· {{ count }}</span></span>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section container">
+  <div class="panel" style="display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
+    <div>
+      <span class="eyebrow">Run a club?</span>
+      <h3 style="margin:6px 0 0;">Claim your club's listing</h3>
+      <p class="muted" style="margin:6px 0 0; max-width:50ch;">Officers can claim their organization, edit its description, and post real events students can RSVP to.</p>
+    </div>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-outline">Claim a club</a>
+  </div>
+</section>
+{% endblock %}

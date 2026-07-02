@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Your matches{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">{{ total_matches }} matches found</span>
+      <h2>Your ranked club matches</h2>
+    </div>
+    <a href="{{ url_for('main.onboarding') }}" class="btn btn-ghost btn-sm">Edit preferences</a>
+  </div>
+
+  {% if not matches %}
+    <div class="empty-state panel">
+      <h3>No matches yet</h3>
+      <p>Try selecting a few more categories in your preferences.</p>
+      <a href="{{ url_for('main.onboarding') }}" class="btn btn-outline">Update preferences</a>
+    </div>
+  {% else %}
+    <div class="club-grid">
+      {% for m in matches %}
+        {% set club = m.club %}
+        <a class="club-card" href="{{ url_for('clubs.detail', club_id=club.id) }}">
+          <div class="club-card-top">
+            <span class="badge badge-category">{{ club.category }}</span>
+            <span class="directory-stamp">No. {{ club.directory_number }}</span>
+          </div>
+          <h3>{{ club.name }}</h3>
+          <p class="club-desc">{{ club.description }}</p>
+          {% if m.badge %}
+            <span class="badge badge-{{ m.badge }}">{{ m.badge }} match</span>
+          {% endif %}
+          <div class="club-card-foot">
+            <div class="match-score">
+              <div class="score-bar"><span style="width:{{ m.score }}%"></span></div>
+              <span class="score-num">{{ m.score }}%</span>
+            </div>
+            {% if club.id in joined_ids %}
+              <span class="badge badge-member">Joined</span>
+            {% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+
+    {% if has_more %}
+      <div style="text-align:center; margin-top:32px;">
+        <a href="{{ url_for('main.recommendations', page=current_page + 1) }}" class="btn btn-outline">Load more matches</a>
+      </div>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

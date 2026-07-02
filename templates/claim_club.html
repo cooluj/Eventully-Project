@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Claim {{ club.name }}{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <form class="form-card" method="POST" style="max-width:520px;">
+    <span class="eyebrow">Officer verification</span>
+    <h2 style="margin-top:10px;">Claim {{ club.name }}</h2>
+    <p class="muted">Tell us about your role so we can verify you're actually with this club before handing over the listing. A site admin reviews every request.</p>
+
+    <div class="field">
+      <label for="message">Your role &amp; how we can verify it</label>
+      <textarea id="message" name="message" rows="5" placeholder="e.g. I'm the current president. You can confirm with our advisor at..." required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-gold btn-block">Submit claim request</button>
+    <a href="{{ url_for('clubs.detail', club_id=club.id) }}" class="btn btn-ghost btn-block" style="margin-top:8px;">Cancel</a>
+  </form>
+</section>
+{% endblock %}

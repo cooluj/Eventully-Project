@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <form class="form-card" method="POST" action="{{ url_for('auth.login') }}" novalidate>
+    <span class="eyebrow">Welcome back</span>
+    <h2 style="margin-top:10px;">Log in</h2>
+
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ email }}" required autocomplete="email">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+
+    <button type="submit" class="btn btn-gold btn-block">Log in</button>
+
+    <p class="muted" style="text-align:center; margin-top:18px; font-size:0.88rem;">
+      New here? <a href="{{ url_for('auth.register') }}" style="color:var(--gold-dark); font-weight:600;">Create an account</a>
+    </p>
+    <p class="muted mono" style="text-align:center; margin-top:8px; font-size:0.76rem;">
+      Just browsing? demo@uw.edu / demopass123
+    </p>
+  </form>
+</section>
+{% endblock %}

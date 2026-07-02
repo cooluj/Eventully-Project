@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Officer dashboard{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <span class="eyebrow">Officer tools</span>
+  <h2>Manage your clubs</h2>
+
+  {% if not clubs %}
+    <div class="empty-state panel">
+      <h3>You don't manage any clubs yet</h3>
+      <p>Find your club in the directory and submit a claim request.</p>
+      <a href="{{ url_for('clubs.browse') }}" class="btn btn-gold">Browse clubs</a>
+    </div>
+  {% else %}
+    {% for club in clubs %}
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="section-head" style="margin-bottom:12px;">
+          <div>
+            <span class="eyebrow">{{ club.category }} · No. {{ club.directory_number }}</span>
+            <h3 style="margin:4px 0 0;">{{ club.name }}</h3>
+          </div>
+          <div class="pill-row">
+            <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-ghost btn-sm">Edit description</a>
+            <a href="{{ url_for('officer.new_event', club_id=club.id) }}" class="btn btn-gold btn-sm">Post an event</a>
+          </div>
+        </div>
+
+        <p class="muted">{{ club.member_count }} member{{ 's' if club.member_count != 1 }}</p>
+
+        {% if club.events %}
+          <table class="data-table">
+            <tr><th>Event</th><th>When</th><th>RSVPs</th><th></th></tr>
+            {% for event in club.events %}
+              <tr>
+                <td>{{ event.name }}</td>
+                <td>{{ event.weekday }}, {{ event.time }}</td>
+                <td>{{ event.attendee_count }}/{{ event.capacity }}</td>
+                <td class="pill-row">
+                  <a href="{{ url_for('officer.edit_event', event_id=event.id) }}" class="btn btn-ghost btn-sm">Edit</a>
+                  <form method="POST" action="{{ url_for('officer.delete_event', event_id=event.id) }}" onsubmit="return confirm('Delete this event?');">
+                    <button type="submit" class="btn btn-brick btn-sm">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </table>
+        {% else %}
+          <p class="muted" style="margin-top:12px;">No events posted yet.</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

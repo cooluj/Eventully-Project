@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Create your account{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <form class="form-card" method="POST" action="{{ url_for('auth.register') }}" novalidate>
+    <span class="eyebrow">Registration card</span>
+    <h2 style="margin-top:10px;">Create your account</h2>
+    <p class="muted" style="margin-bottom:24px;">Students and club officers use the same login.</p>
+
+    <div class="field">
+      <label for="name">Full name</label>
+      <input type="text" id="name" name="name" value="{{ name }}" required autocomplete="name">
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ email }}" required autocomplete="email" placeholder="you@uw.edu">
+      <div class="hint">.edu address required</div>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8">
+      <div class="hint">At least 8 characters</div>
+    </div>
+    <div class="field">
+      <label for="confirm_password">Confirm password</label>
+      <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+    </div>
+
+    <button type="submit" class="btn btn-gold btn-block">Create account</button>
+
+    <p class="muted" style="text-align:center; margin-top:18px; font-size:0.88rem;">
+      Already have an account? <a href="{{ url_for('auth.login') }}" style="color:var(--gold-dark); font-weight:600;">Log in</a>
+    </p>
+  </form>
+</section>
+{% endblock %}

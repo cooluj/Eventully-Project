@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ club.name }}{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <div style="max-width:760px;">
+    <div class="club-card-top" style="margin-bottom:12px;">
+      <span class="badge badge-category">{{ club.category }}</span>
+      <span class="directory-stamp">No. {{ club.directory_number }}</span>
+    </div>
+    <h1>{{ club.name }}</h1>
+
+    <div class="pill-row" style="margin-bottom:20px;">
+      {% if club.is_claimed %}
+        <span class="badge badge-claimed">Officer: {{ club.officer.name }}</span>
+      {% else %}
+        <span class="badge badge-unclaimed">Unclaimed listing</span>
+      {% endif %}
+      <span class="badge badge-category">{{ club.member_count }} member{{ 's' if club.member_count != 1 }}</span>
+      {% if is_member %}<span class="badge badge-member">You're a member</span>{% endif %}
+      {% if is_officer %}<span class="badge badge-officer">You're the officer</span>{% endif %}
+    </div>
+
+    <p style="font-size:1.05rem;">{{ club.description or "No description yet." }}</p>
+
+    <div class="hero-actions" style="margin-top:24px;">
+      {% if is_member %}
+        <form method="POST" action="{{ url_for('clubs.leave', club_id=club.id) }}">
+          <button type="submit" class="btn btn-outline">Leave club</button>
+        </form>
+      {% else %}
+        <form method="POST" action="{{ url_for('clubs.join', club_id=club.id) }}">
+          <button type="submit" class="btn btn-gold">Join club</button>
+        </form>
+      {% endif %}
+
+      {% if is_officer %}
+        <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-outline">Manage listing</a>
+      {% elif not club.is_claimed %}
+        {% if pending_claim %}
+          <span class="badge badge-unclaimed" style="padding:11px 18px;">Claim request pending review</span>
+        {% else %}
+          <a href="{{ url_for('clubs.claim', club_id=club.id) }}" class="btn btn-ghost">I'm an officer — claim this club</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  {% if club.events %}
+    <div class="section-head" style="margin-top:48px;">
+      <div>
+        <span class="eyebrow">Upcoming</span>
+        <h3 style="margin:0;">Events from {{ club.name }}</h3>
+      </div>
+    </div>
+    <div class="event-grid">
+      {% for event in club.events %}
+        <a class="ticket" href="{{ url_for('events.detail', event_id=event.id) }}">
+          {% if event.image_url %}<div class="ticket-img" style="background-image:url('{{ event.image_url }}')"></div>{% endif %}
+          <div class="ticket-body">
+            <span class="ticket-day">{{ event.weekday }} · {{ event.time }}</span>
+            <h3>{{ event.name }}</h3>
+            <span class="ticket-meta">{{ event.location }}</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if similar_clubs %}
+    <div class="section-head" style="margin-top:48px;">
+      <div>
+        <span class="eyebrow">More like this</span>
+        <h3 style="margin:0;">Other {{ club.category }} clubs</h3>
+      </div>
+    </div>
+    <div class="club-grid">
+      {% for c in similar_clubs %}
+        <a class="club-card" href="{{ url_for('clubs.detail', club_id=c.id) }}">
+          <div class="club-card-top">
+            <span class="badge badge-category">{{ c.category }}</span>
+            <span class="directory-stamp">No. {{ c.directory_number }}</span>
+          </div>
+          <h3>{{ c.name }}</h3>
+          <p class="club-desc">{{ c.description }}</p>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

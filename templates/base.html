@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Eventully{% endblock %} · Eventully</title>
+  <meta name="description" content="Discover UW's 1,200+ student clubs, matched to what you actually care about.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="{{ url_for('main.index') }}">
+        <span class="brand-mark">Eventully</span>
+        <span class="brand-tag">UW Directory</span>
+      </a>
+      <nav>
+        <ul class="nav-links">
+          {% if current_user.is_authenticated %}
+            <li><a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">Dashboard</a></li>
+            <li><a href="{{ url_for('clubs.browse') }}" class="{{ 'active' if request.endpoint == 'clubs.browse' }}">Clubs</a></li>
+            <li><a href="{{ url_for('events.browse') }}" class="{{ 'active' if request.endpoint == 'events.browse' }}">Events</a></li>
+            {% if current_user.is_officer() %}
+              <li><a href="{{ url_for('officer.dashboard') }}" class="{{ 'active' if request.blueprint == 'officer' }}">Officer</a></li>
+            {% endif %}
+            {% if is_site_admin %}
+              <li><a href="{{ url_for('admin.claims') }}" class="{{ 'active' if request.blueprint == 'admin' }}">Admin</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('auth.logout') }}">Log out</a></li>
+          {% else %}
+            <li><a href="{{ url_for('auth.login') }}">Log in</a></li>
+            <li><a href="{{ url_for('auth.register') }}" class="nav-cta">Get started</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for category, message in messages %}
+            <li class="flash flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; width:100%;">
+      <span>Eventully · Built for UW students, by a UW student.</span>
+      <span>1,231 clubs indexed · Not officially affiliated with the University of Washington</span>
+    </div>
+  </footer>
+</body>
+</html>

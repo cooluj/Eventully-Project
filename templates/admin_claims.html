@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Review claims{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <span class="eyebrow">Admin</span>
+  <h2>Club officer claims</h2>
+
+  <h3 style="margin-top:32px;">Pending ({{ pending|length }})</h3>
+  {% if not pending %}
+    <p class="muted">Nothing to review right now.</p>
+  {% else %}
+    {% for claim in pending %}
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="section-head" style="margin-bottom:8px;">
+          <div>
+            <h3 style="margin:0;">{{ claim.club.name }}</h3>
+            <p class="muted" style="margin:4px 0 0;">Requested by {{ claim.requester.name }} ({{ claim.requester.email }})</p>
+          </div>
+          <span class="mono muted" style="font-size:0.78rem;">{{ claim.created_at.strftime('%b %d, %Y') }}</span>
+        </div>
+        <p>{{ claim.message }}</p>
+        <div class="pill-row">
+          <form method="POST" action="{{ url_for('admin.approve', claim_id=claim.id) }}">
+            <button type="submit" class="btn btn-gold btn-sm">Approve</button>
+          </form>
+          <form method="POST" action="{{ url_for('admin.reject', claim_id=claim.id) }}">
+            <button type="submit" class="btn btn-brick btn-sm">Reject</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <h3 style="margin-top:40px;">Recent decisions</h3>
+  {% if not recent %}
+    <p class="muted">No decisions yet.</p>
+  {% else %}
+    <table class="data-table">
+      <tr><th>Club</th><th>Requester</th><th>Status</th><th>Decided</th></tr>
+      {% for claim in recent %}
+        <tr>
+          <td>{{ claim.club.name }}</td>
+          <td>{{ claim.requester.email }}</td>
+          <td><span class="badge badge-{{ 'great' if claim.status == 'approved' else 'unclaimed' }}">{{ claim.status }}</span></td>
+          <td class="mono">{{ claim.decided_at.strftime('%b %d, %Y') if claim.decided_at }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+</section>
+{% endblock %}
