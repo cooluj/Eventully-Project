@@ -658,7 +658,7 @@ def test_admin_launch_readiness_lists_email_blocker(client):
     html = client.get("/admin/launch-readiness").get_data(as_text=True)
     assert "Launch readiness" in html
     assert "Email delivery" in html
-    assert "SMTP is not configured" in html
+    assert "SMTP is incomplete" in html
     assert "Send test email" in html
 
 

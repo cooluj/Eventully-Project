@@ -3,7 +3,13 @@ def run_launch_checks(app):
     config = app.config
     database_url = config.get("SQLALCHEMY_DATABASE_URI", "")
     admin_emails = {email.lower() for email in config.get("ADMIN_EMAILS", set())}
-    mail_configured = bool(config.get("MAIL_SERVER"))
+    mail_from = config.get("MAIL_FROM", "")
+    mail_configured = bool(
+        config.get("MAIL_SERVER")
+        and mail_from
+        and mail_from != "Eventully <hello@eventully.app>"
+        and (not config.get("MAIL_USERNAME") or config.get("MAIL_PASSWORD"))
+    )
 
     checks = [
         {
@@ -68,8 +74,8 @@ def run_launch_checks(app):
             "status": "pass" if mail_configured else "fail",
             "detail": "SMTP is configured for verification, reset, claim, team, and message emails."
             if mail_configured
-            else "SMTP is not configured. Verification and password reset emails will not reach inboxes.",
-            "action": "Set MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM, and MAIL_USE_TLS.",
+            else "SMTP is incomplete. Verification and password reset emails will not reach inboxes.",
+            "action": "Set MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM, and MAIL_USE_TLS with a verified sender.",
         },
         {
             "key": "verification-required",

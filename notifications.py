@@ -22,6 +22,9 @@ def send_email(to_email, subject, body):
     if not server:
         current_app.logger.info("Email not configured. To=%s Subject=%s Body=%s", to_email, subject, body)
         return False
+    if current_app.config.get("MAIL_USERNAME") and not current_app.config.get("MAIL_PASSWORD"):
+        current_app.logger.warning("Email username configured without password. To=%s Subject=%s", to_email, subject)
+        return False
 
     message = EmailMessage()
     message["From"] = current_app.config["MAIL_FROM"]
