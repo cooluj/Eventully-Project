@@ -6,7 +6,8 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Club, ClubClaim
-from notifications import send_claim_decision_email
+from notifications import send_claim_decision_email, send_email
+from production_checks import run_launch_checks
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -28,6 +29,33 @@ def claims():
     recent = ClubClaim.query.filter(ClubClaim.status != "pending").order_by(ClubClaim.decided_at.desc()).limit(20).all()
     claimed_clubs = Club.query.filter(Club.officer_id.isnot(None)).order_by(Club.claimed_at.desc()).all()
     return render_template("admin_claims.html", pending=pending, recent=recent, claimed_clubs=claimed_clubs)
+
+
+@bp.route("/launch-readiness")
+@login_required
+@admin_only
+def launch_readiness():
+    readiness = run_launch_checks(current_app)
+    return render_template("admin_launch_readiness.html", readiness=readiness)
+
+
+@bp.route("/launch-readiness/test-email", methods=["POST"])
+@login_required
+@admin_only
+def test_email():
+    sent = send_email(
+        current_user.email,
+        "Eventully test email",
+        (
+            f"Hi {current_user.name},\n\n"
+            "This confirms Eventully can send production email from the current deployment."
+        ),
+    )
+    if sent:
+        flash(f"Test email sent to {current_user.email}.", "success")
+    else:
+        flash("Email delivery is not configured or the SMTP provider rejected the message.", "error")
+    return redirect(url_for("admin.launch_readiness"))
 
 
 @bp.route("/claims/<int:claim_id>/approve", methods=["POST"])

@@ -89,6 +89,21 @@ Set these in `.env` locally, or in your host's dashboard when deploying:
 | `EMAIL_VERIFICATION_REQUIRED` | When `true`, blocks unverified users from club claims and officer tools. Configure SMTP first. | `false` |
 | `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_USE_TLS` | SMTP settings for verification, reset, claim, team, and message notification emails. | disabled |
 
+### Production email
+
+The app is wired for SMTP, but inbox delivery only works after you attach a provider in Render. A straightforward Resend setup is:
+
+| Render key | Value |
+| --- | --- |
+| `MAIL_SERVER` | `smtp.resend.com` |
+| `MAIL_PORT` | `587` |
+| `MAIL_USERNAME` | `resend` |
+| `MAIL_PASSWORD` | your Resend API key |
+| `MAIL_FROM` | `Eventully <hello@your-verified-domain>` |
+| `MAIL_USE_TLS` | `true` |
+
+After saving those values, open `/admin/launch-readiness` as an admin and click **Send test email**. Only turn `EMAIL_VERIFICATION_REQUIRED=true` after the test email reaches your inbox.
+
 ## Security
 
 - All forms are CSRF-protected (Flask-WTF); passwords are hashed with PBKDF2-SHA256.

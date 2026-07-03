@@ -653,6 +653,21 @@ def test_admin_revokes_officer(client, app):
         assert db.session.get(Club, 1).officer_id is None
 
 
+def test_admin_launch_readiness_lists_email_blocker(client):
+    register(client, email="admin@uw.edu", name="Site Admin")
+    html = client.get("/admin/launch-readiness").get_data(as_text=True)
+    assert "Launch readiness" in html
+    assert "Email delivery" in html
+    assert "SMTP is not configured" in html
+    assert "Send test email" in html
+
+
+def test_admin_launch_readiness_test_email_without_smtp(client):
+    register(client, email="admin@uw.edu", name="Site Admin")
+    resp = post(client, "/admin/launch-readiness/test-email", "/admin/launch-readiness")
+    assert "Email delivery is not configured" in resp.get_data(as_text=True)
+
+
 # ---------- club messages ----------
 
 def test_member_and_officer_can_use_club_messages(client, app):

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Launch readiness{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">Admin</span>
+      <h2 style="margin-top:8px;">Launch readiness</h2>
+      <p class="muted">Use this before inviting club officers. Every blocker should be cleared for production.</p>
+    </div>
+    <div class="pill-row">
+      <a href="{{ url_for('admin.claims') }}" class="btn btn-ghost btn-sm">Claims</a>
+      <form method="POST" action="{{ url_for('admin.test_email') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm">Send test email</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="readiness-summary {{ 'ready' if readiness.ready else 'blocked' }}">
+    <strong>{{ "Ready to pilot" if readiness.ready else "Not ready yet" }}</strong>
+    <span>
+      {{ readiness.blockers }} blocker{{ 's' if readiness.blockers != 1 }}
+      · {{ readiness.warnings }} warning{{ 's' if readiness.warnings != 1 }}
+    </span>
+  </div>
+
+  <div class="readiness-grid">
+    {% for check in readiness.checks %}
+      <article class="readiness-item readiness-{{ check.status }}">
+        <div class="readiness-item-head">
+          <h3>{{ check.title }}</h3>
+          <span class="badge badge-{{ 'great' if check.status == 'pass' else 'officer' if check.status == 'fail' else 'good' }}">
+            {{ "OK" if check.status == "pass" else "Blocker" if check.status == "fail" else "Warning" }}
+          </span>
+        </div>
+        <p>{{ check.detail }}</p>
+        {% if check.status != "pass" %}
+          <small>{{ check.action }}</small>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+
+  <div class="panel" style="margin-top:24px;">
+    <h3>Recommended SMTP values for Resend</h3>
+    <table class="data-table">
+      <tr><th>Render key</th><th>Value</th></tr>
+      <tr><td class="mono">MAIL_SERVER</td><td class="mono">smtp.resend.com</td></tr>
+      <tr><td class="mono">MAIL_PORT</td><td class="mono">587</td></tr>
+      <tr><td class="mono">MAIL_USERNAME</td><td class="mono">resend</td></tr>
+      <tr><td class="mono">MAIL_PASSWORD</td><td>Your Resend API key</td></tr>
+      <tr><td class="mono">MAIL_FROM</td><td class="mono">Eventully &lt;hello@your-verified-domain&gt;</td></tr>
+      <tr><td class="mono">MAIL_USE_TLS</td><td class="mono">true</td></tr>
+    </table>
+  </div>
+</section>
+{% endblock %}

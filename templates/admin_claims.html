@@ -3,8 +3,13 @@
 
 {% block content %}
 <section class="section container">
-  <span class="eyebrow">Admin</span>
-  <h2>Club officer claims</h2>
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">Admin</span>
+      <h2 style="margin-top:8px;">Club officer claims</h2>
+    </div>
+    <a href="{{ url_for('admin.launch_readiness') }}" class="btn btn-ghost btn-sm">Launch readiness</a>
+  </div>
 
   <h3 style="margin-top:32px;">Pending ({{ pending|length }})</h3>
   {% if not pending %}
