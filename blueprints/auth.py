@@ -70,9 +70,10 @@ def settings():
 def resend_verification():
     if current_user.is_email_verified:
         flash("Your email is already verified.", "info")
-    else:
-        send_verification_email(current_user)
+    elif send_verification_email(current_user):
         flash("Verification email sent. Check your inbox for the link.", "success")
+    else:
+        flash("Email delivery is not configured yet, so no verification email was sent.", "info")
     return redirect(request.referrer or url_for("auth.settings"))
 
 
@@ -134,10 +135,17 @@ def register():
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        send_verification_email(user)
+        email_sent = send_verification_email(user)
 
         login_user(user, remember=True)
-        flash(f"Welcome to Eventully, {user.name.split(' ')[0]}! Check your inbox to verify your email.", "success")
+        if email_sent:
+            flash(f"Welcome to Eventully, {user.name.split(' ')[0]}! Check your inbox to verify your email.", "success")
+        else:
+            flash(
+                f"Welcome to Eventully, {user.name.split(' ')[0]}! Email delivery is not configured yet, "
+                "so verification is temporarily unavailable.",
+                "success",
+            )
         return redirect(url_for("main.onboarding"))
 
     return render_template("register.html", email="", name="")
