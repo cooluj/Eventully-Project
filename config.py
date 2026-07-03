@@ -56,9 +56,11 @@ class Config:
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME") or os.environ.get("SMTP_USERNAME", "")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD") or os.environ.get("SMTP_PASSWORD", "")
     MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
-    MAIL_FROM = os.environ.get("MAIL_FROM") or os.environ.get("SMTP_FROM", "Eventully <hello@eventully.app>")
+    # No default sender: production must set a real verified address, and the
+    # launch-readiness check uses "MAIL_FROM is set" as the signal for that.
+    MAIL_FROM = os.environ.get("MAIL_FROM") or os.environ.get("SMTP_FROM", "")
 
-    # When set (e.g. "eventully.app"), GET requests on any other host 301 to
+    # When set (e.g. "eventully.org"), GET requests on any other host 301 to
     # this one, so the .onrender.com URL doesn't live a parallel life.
     CANONICAL_HOST = os.environ.get("CANONICAL_HOST", "").strip().lower()
 

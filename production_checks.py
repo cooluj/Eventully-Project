@@ -7,7 +7,6 @@ def run_launch_checks(app):
     mail_configured = bool(
         config.get("MAIL_SERVER")
         and mail_from
-        and mail_from != "Eventully <hello@eventully.app>"
         and (not config.get("MAIL_USERNAME") or config.get("MAIL_PASSWORD"))
     )
 

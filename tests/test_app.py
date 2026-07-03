@@ -114,21 +114,21 @@ def test_register_rate_limited(client):
 
 def test_canonical_host_redirect():
     class CanonicalConfig(TestConfig):
-        CANONICAL_HOST = "eventully.app"
+        CANONICAL_HOST = "eventully.org"
 
     capp = create_app(CanonicalConfig)
     cclient = capp.test_client()
 
     resp = cclient.get("/dashboard?tab=events", base_url="http://eventully.onrender.com")
     assert resp.status_code == 301
-    assert resp.headers["Location"] == "https://eventully.app/dashboard?tab=events"
+    assert resp.headers["Location"] == "https://eventully.org/dashboard?tab=events"
 
     # /healthz stays reachable on the host Render probes
     resp = cclient.get("/healthz", base_url="http://eventully.onrender.com")
     assert resp.status_code == 200
 
     # requests already on the canonical host pass through
-    resp = cclient.get("/healthz", base_url="http://eventully.app")
+    resp = cclient.get("/healthz", base_url="http://eventully.org")
     assert resp.status_code == 200
 
 

@@ -33,7 +33,7 @@ services:
       # Set this to YOUR email in the Render dashboard so you can approve club claims
       - key: ADMIN_EMAILS
         sync: false
-      # Set to your custom domain (e.g. eventully.app) after attaching it in
+      # Set to your custom domain (e.g. eventully.org) after attaching it in
       # Render — other hosts then 301 to it.
       - key: CANONICAL_HOST
         sync: false

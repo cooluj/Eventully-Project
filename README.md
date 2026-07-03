@@ -109,7 +109,7 @@ After saving those values, open `/admin/launch-readiness` as an admin and click 
 1. Buy the domain (Cloudflare Registrar sells at cost and its DNS handles the apex-CNAME problem; Porkbun/Namecheap also work).
 2. In Render: service → **Settings → Custom Domains** → add the domain (and `www.` if you want it). Render shows the DNS records to add and provisions TLS automatically once they resolve.
 3. In Resend: **Domains → Add Domain**, then add the SPF/DKIM records it lists at your DNS provider and hit Verify. Set `MAIL_FROM` to `Eventully <hello@yourdomain>`.
-4. Set `CANONICAL_HOST` (e.g. `eventully.app`) in Render — every other host (like the `.onrender.com` URL) then 301s to it. `/healthz` is exempt so Render's health checks keep passing.
+4. Set `CANONICAL_HOST` (e.g. `eventully.org`) in Render — every other host (like the `.onrender.com` URL) then 301s to it. `/healthz` is exempt so Render's health checks keep passing.
 
 ### Staying warm on the free tier
 

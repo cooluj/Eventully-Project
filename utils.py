@@ -56,29 +56,3 @@ def build_ics(event):
     ])
 
 
-def send_email(to, subject, body):
-    """Send a plain-text email via SMTP env config. Returns True on success,
-    False when SMTP isn't configured or sending fails."""
-    import os
-    import smtplib
-    from email.message import EmailMessage
-
-    host = os.environ.get("SMTP_HOST")
-    if not host:
-        return False
-    msg = EmailMessage()
-    msg["From"] = os.environ.get("SMTP_FROM", os.environ.get("SMTP_USERNAME", "no-reply@eventully.app"))
-    msg["To"] = to
-    msg["Subject"] = subject
-    msg.set_content(body)
-    try:
-        port = int(os.environ.get("SMTP_PORT", "587"))
-        with smtplib.SMTP(host, port, timeout=15) as server:
-            server.starttls()
-            username = os.environ.get("SMTP_USERNAME")
-            if username:
-                server.login(username, os.environ.get("SMTP_PASSWORD", ""))
-            server.send_message(msg)
-        return True
-    except Exception:
-        return False
