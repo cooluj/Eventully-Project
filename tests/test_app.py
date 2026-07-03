@@ -339,3 +339,77 @@ def test_officer_edits_listing_fields_shown_on_detail(client, app):
     assert "Tuesdays 6pm, HUB 145" in html
     assert "@uwrobots" in html  # handle stored without the @, rendered with it
     assert "robots@uw.edu" in html
+
+
+# ---------- saved / hidden clubs ----------
+
+def test_save_and_unsave_club(client):
+    register(client)
+    resp = post(client, "/club/1/save", "/club/1")
+    assert "Saved Robotics Club" in resp.get_data(as_text=True)
+    html = client.get("/dashboard").get_data(as_text=True)
+    assert "Saved for later" in html and "Robotics Club" in html
+
+    resp = post(client, "/club/1/save", "/club/1")
+    assert "Removed Robotics Club" in resp.get_data(as_text=True)
+    html = client.get("/dashboard").get_data(as_text=True)
+    assert "Saved for later" not in html
+
+
+def test_hidden_club_excluded_from_recommendations(client):
+    register(client)
+    post(client, "/onboarding", "/onboarding",
+         categories="Technology", major="Computer Science", time_commitment="medium")
+    html = client.get("/recommendations").get_data(as_text=True)
+    assert "Robotics Club" in html
+
+    post(client, "/club/1/hide", "/recommendations")
+    html = client.get("/recommendations").get_data(as_text=True)
+    assert "Robotics Club" not in html
+
+
+# ---------- calendar / search / help ----------
+
+def test_calendar_groups_by_weekday(client, app):
+    with app.app_context():
+        db.session.add(Event(club_id=1, name="Weds Workshop", weekday="Wednesday", time="18:00"))
+        db.session.commit()
+    register(client)
+    html = client.get("/calendar").get_data(as_text=True)
+    assert "Weds Workshop" in html
+    assert "cal-grid" in html
+
+
+def test_search_finds_clubs_and_events(client, app):
+    with app.app_context():
+        db.session.add(Event(club_id=1, name="Robot Rumble", location="HUB"))
+        db.session.commit()
+    register(client)
+    html = client.get("/search?q=robot").get_data(as_text=True)
+    assert "Robotics Club" in html
+    assert "Robot Rumble" in html
+    html = client.get("/search?q=zzzznope").get_data(as_text=True)
+    assert "Nothing matched" in html
+
+
+def test_help_page_public(client):
+    resp = client.get("/help")
+    assert resp.status_code == 200
+    assert "How do club recommendations work?" in resp.get_data(as_text=True)
+
+
+def test_officer_dues_hours_shown_on_card(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+
+    login(client, "owner@uw.edu")
+    post(client, "/officer/club/1/edit", "/officer/club/1/edit",
+         description="We build robots.", dues="No dues", hours_per_week="3 hours/week")
+    html = client.get("/club/1").get_data(as_text=True)
+    assert "No dues" in html and "3 hours/week" in html
+    assert "Last updated: today" in html

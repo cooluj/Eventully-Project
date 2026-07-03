@@ -35,6 +35,21 @@ def create_app(config_class=Config):
     app.register_blueprint(officer_bp)
     app.register_blueprint(admin_bp)
 
+    @app.template_filter("days_ago")
+    def days_ago(dt):
+        if not dt:
+            return ""
+        from datetime import datetime
+        days = (datetime.utcnow() - dt).days
+        if days <= 0:
+            return "today"
+        if days == 1:
+            return "yesterday"
+        if days < 30:
+            return f"{days} days ago"
+        months = days // 30
+        return f"{months} month{'s' if months > 1 else ''} ago"
+
     @app.context_processor
     def inject_admin_flag():
         from flask_login import current_user

@@ -37,6 +37,10 @@ def edit_club(club):
         club.instagram = request.form.get("instagram", "").strip().lstrip("@")
         club.contact_email = request.form.get("contact_email", "").strip()
         club.meeting_info = request.form.get("meeting_info", "").strip()
+        club.dues = request.form.get("dues", "").strip()
+        club.hours_per_week = request.form.get("hours_per_week", "").strip()
+        from datetime import datetime
+        club.updated_at = datetime.utcnow()
         db.session.commit()
         flash(f"{club.name}'s listing has been updated.", "success")
         return redirect(url_for("officer.dashboard"))

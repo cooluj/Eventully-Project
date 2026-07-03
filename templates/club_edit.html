@@ -19,6 +19,17 @@
       <input type="text" id="meeting_info" name="meeting_info" value="{{ club.meeting_info }}" placeholder="e.g. Tuesdays 6pm, HUB 145">
     </div>
 
+    <div class="field" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div>
+        <label for="dues">Dues</label>
+        <input type="text" id="dues" name="dues" value="{{ club.dues }}" placeholder="No dues / $15 per quarter">
+      </div>
+      <div>
+        <label for="hours_per_week">Time commitment</label>
+        <input type="text" id="hours_per_week" name="hours_per_week" value="{{ club.hours_per_week }}" placeholder="2 hours/week">
+      </div>
+    </div>
+
     <div class="field">
       <label for="website">Website</label>
       <input type="text" id="website" name="website" value="{{ club.website }}" placeholder="https://…">

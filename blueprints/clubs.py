@@ -2,7 +2,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Club, ClubClaim, Membership
+from models import Club, ClubClaim, Membership, SavedClub
 
 bp = Blueprint("clubs", __name__)
 
@@ -42,6 +42,7 @@ def browse():
 
     categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
     joined_ids = current_user.joined_club_ids
+    saved_ids = current_user.saved_club_ids
 
     return render_template(
         "clubs.html",
@@ -55,6 +56,7 @@ def browse():
         current_page=page,
         has_more=has_more,
         joined_ids=joined_ids,
+        saved_ids=saved_ids,
     )
 
 
@@ -63,6 +65,7 @@ def browse():
 def detail(club_id):
     club = Club.query.get_or_404(club_id)
     is_member = club.id in current_user.joined_club_ids
+    is_saved = club.id in current_user.saved_club_ids
     is_officer = club.officer_id == current_user.id
     pending_claim = ClubClaim.query.filter_by(club_id=club.id, user_id=current_user.id, status="pending").first()
     similar = Club.query.filter(Club.category == club.category, Club.id != club.id).limit(4).all()
@@ -71,6 +74,7 @@ def detail(club_id):
         "club_detail.html",
         club=club,
         is_member=is_member,
+        is_saved=is_saved,
         is_officer=is_officer,
         pending_claim=pending_claim,
         similar_clubs=similar,
@@ -125,3 +129,33 @@ def claim(club_id):
         return redirect(url_for("clubs.detail", club_id=club.id))
 
     return render_template("claim_club.html", club=club)
+
+
+def _toggle_bookmark(club_id, kind):
+    club = Club.query.get_or_404(club_id)
+    existing = SavedClub.query.filter_by(user_id=current_user.id, club_id=club.id, kind=kind).first()
+    if existing:
+        db.session.delete(existing)
+        added = False
+    else:
+        db.session.add(SavedClub(user_id=current_user.id, club_id=club.id, kind=kind))
+        added = True
+    db.session.commit()
+    return club, added
+
+
+@bp.route("/club/<int:club_id>/save", methods=["POST"])
+@login_required
+def save(club_id):
+    club, added = _toggle_bookmark(club_id, "saved")
+    flash(f"Saved {club.name} to your list." if added else f"Removed {club.name} from your saved clubs.", "success" if added else "info")
+    return redirect(request.form.get("next") or url_for("clubs.detail", club_id=club.id))
+
+
+@bp.route("/club/<int:club_id>/hide", methods=["POST"])
+@login_required
+def hide(club_id):
+    club, added = _toggle_bookmark(club_id, "hidden")
+    if added:
+        flash(f"Got it — we won't recommend {club.name} again.", "info")
+    return redirect(request.form.get("next") or url_for("main.recommendations"))

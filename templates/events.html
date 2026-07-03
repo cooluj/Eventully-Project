@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import event_card %}
 {% block title %}Events{% endblock %}
 
 {% block content %}
@@ -6,11 +7,12 @@
   <div class="section-head">
     <div>
       <span class="eyebrow">{{ events|length }} events</span>
-      <h2>What's happening on campus</h2>
+      <h2 style="margin:4px 0 0;">Open events this week</h2>
     </div>
+    <a href="{{ url_for('main.calendar') }}" class="view-all">Calendar view →</a>
   </div>
 
-  <div class="category-strip" style="margin-bottom:12px;">
+  <div class="category-strip" style="margin-bottom:10px;">
     {% for cat in categories %}
       <a class="chip {{ 'active' if cat == current_category }}" href="{{ url_for('events.browse', category=cat, day=current_day) }}">{{ cat }}</a>
     {% endfor %}
@@ -22,26 +24,13 @@
   </div>
 
   {% if not events %}
-    <div class="empty-state panel">
+    <div class="empty-state">
       <h3>No events match those filters</h3>
       <p>Try a different day or category, or check back after joining more clubs.</p>
     </div>
   {% else %}
     <div class="event-grid">
-      {% for event in events %}
-        <a class="ticket" href="{{ url_for('events.detail', event_id=event.id) }}">
-          {% if event.image_url %}<div class="ticket-img" style="background-image:url('{{ event.image_url }}')"></div>{% endif %}
-          <div class="ticket-body">
-            <span class="ticket-day">{{ event.weekday }} · {{ event.time }}</span>
-            <h3>{{ event.name }}</h3>
-            <span class="ticket-meta">{{ event.club.name }} · {{ event.location }}</span>
-            <div class="ticket-perf">
-              <span>{{ event.attendee_count }}/{{ event.capacity }} going</span>
-              <span>{{ "You're in" if event.id in rsvp_ids else "Details →" }}</span>
-            </div>
-          </div>
-        </a>
-      {% endfor %}
+      {% for event in events %}{{ event_card(event, rsvp_ids=rsvp_ids) }}{% endfor %}
     </div>
   {% endif %}
 </section>

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import club_card, event_card %}
+{% block title %}Search{% endblock %}
+
+{% block content %}
+<section class="section container">
+  {% if not q %}
+    <div class="empty-state">
+      <h3>Search Eventully</h3>
+      <p>Use the search bar above to find clubs and events by name, description, or location.</p>
+    </div>
+  {% else %}
+    <span class="eyebrow">Search results</span>
+    <h2 style="margin:4px 0 24px;">"{{ q }}"</h2>
+
+    {% if not clubs and not events %}
+      <div class="empty-state">
+        <h3>Nothing matched "{{ q }}"</h3>
+        <p>Try a shorter keyword — or browse the full directory.</p>
+        <a href="{{ url_for('clubs.browse') }}" class="btn">Browse all clubs</a>
+      </div>
+    {% endif %}
+
+    {% if events %}
+      <div class="section-head">
+        <h3 style="margin:0;">Events ({{ events|length }})</h3>
+      </div>
+      <div class="event-grid" style="margin-bottom:36px;">
+        {% for event in events %}{{ event_card(event) }}{% endfor %}
+      </div>
+    {% endif %}
+
+    {% if clubs %}
+      <div class="section-head">
+        <h3 style="margin:0;">Clubs ({{ clubs|length }})</h3>
+        <a class="view-all" href="{{ url_for('clubs.browse', search=q) }}">Refine in directory →</a>
+      </div>
+      <div class="club-grid">
+        {% for club in clubs %}
+          {{ club_card(club, joined_ids=joined_ids, saved_ids=saved_ids, show_actions=True) }}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,54 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Find your people at UW{% endblock %}
+{% block title %}Find your UW community{% endblock %}
 
 {% block content %}
-<section class="hero">
-  <div class="stamp" aria-hidden="true">
-    <span>Univ. of</span>
-    <strong>UW ✦ SEA</strong>
-    <span>Washington</span>
-  </div>
-  <div class="container hero-grid">
-    <div>
-      <span class="eyebrow">No. 001 — Orientation</span>
-      <h1>UW has {{ stats.total_clubs }} clubs.<br>We find <span class="accent-i">yours</span>.</h1>
-      <p class="hero-sub">Every registered student organization on campus, cross-referenced against your major, your interests, and how much time you actually have. No more scrolling a spreadsheet of 1,200 names.</p>
-      <div class="hero-actions">
-        <a href="{{ url_for('auth.register') }}" class="btn btn-gold">Start matching →</a>
-        <a href="{{ url_for('auth.login') }}" class="btn btn-outline">I have an account</a>
-      </div>
-    </div>
-    <div class="route-card">
-      <span class="eyebrow" style="margin-bottom:16px; display:inline-flex;">How it works</span>
-      <ul class="route-list">
-        <li class="route-item">
-          <strong>Tell us what you're into</strong>
-          <span>Pick a few categories — Engineering/Tech, Arts, Service, whatever fits.</span>
-        </li>
-        <li class="route-item">
-          <strong>We score every club</strong>
-          <span>Category fit, major relevance, and time commitment, weighted and ranked.</span>
-        </li>
-        <li class="route-item">
-          <strong>You get a short list</strong>
-          <span>Perfect / great / good matches, with the reasoning shown, not hidden.</span>
-        </li>
-      </ul>
+<section class="hero-banner">
+  <div class="big-w" aria-hidden="true">W</div>
+  <div class="container">
+    <h1>Find your UW Community</h1>
+    <p class="hero-sub">{{ stats.total_clubs }} registered student organizations, matched to your
+      interests, your major, and how much time you actually have.</p>
+    <div class="hero-actions">
+      <a href="{{ url_for('auth.register') }}" class="btn btn-hero">Take the survey →</a>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-hero-outline">I have an account</a>
     </div>
   </div>
 </section>
 
-{% if ticker_clubs %}
-<div class="ticker" aria-hidden="true">
-  <div class="ticker-track">
-    {% for name in ticker_clubs %}<span>{{ name }}</span>{% endfor %}
-    {% for name in ticker_clubs %}<span>{{ name }}</span>{% endfor %}
+<section class="section container" style="padding-bottom:24px;">
+  <div class="quick-cards">
+    <a class="quick-card" href="{{ url_for('auth.register') }}">
+      <div class="quick-card-img" style="background-image:url('https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800')"></div>
+      <div class="quick-card-body">
+        <strong>Browse events</strong>
+        <span>See what's happening on campus this week</span>
+      </div>
+    </a>
+    <a class="quick-card" href="{{ url_for('auth.register') }}">
+      <div class="quick-card-img" style="background-image:url('https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800')"></div>
+      <div class="quick-card-body">
+        <strong>Explore clubs</strong>
+        <span>All {{ stats.total_clubs }} registered student organizations</span>
+      </div>
+    </a>
+    <a class="quick-card" href="{{ url_for('auth.register') }}">
+      <div class="quick-card-img" style="background-image:url('https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800')"></div>
+      <div class="quick-card-body">
+        <strong>Take the survey</strong>
+        <span>Get personalized club recommendations</span>
+      </div>
+    </a>
   </div>
-</div>
-{% endif %}
+</section>
 
-<section class="stat-strip">
-  <div class="container" style="display:contents;">
+<section class="section container" style="padding-top:20px; padding-bottom:24px;">
+  <div class="stat-strip">
     <div class="stat"><span class="stat-num">{{ stats.total_clubs }}</span><span class="stat-label">Clubs indexed</span></div>
     <div class="stat"><span class="stat-num">{{ stats.categories }}</span><span class="stat-label">Categories</span></div>
     <div class="stat"><span class="stat-num">{{ stats.total_events }}</span><span class="stat-label">Live events</span></div>
@@ -56,28 +50,45 @@
   </div>
 </section>
 
-<section class="section container">
+<section class="section container" style="padding-top:20px; padding-bottom:24px;">
   <div class="section-head">
-    <div>
-      <span class="eyebrow">The catalog</span>
-      <h2>Where students are already looking</h2>
-    </div>
+    <h2 style="margin:0;">Popular categories</h2>
   </div>
   <div class="category-strip">
     {% for cat, count in stats.top_categories.items() %}
-      <span class="chip">{{ cat }} <span class="mono muted">· {{ count }}</span></span>
+      <span class="chip">{{ cat }} · {{ count }}</span>
     {% endfor %}
   </div>
 </section>
 
-<section class="section container">
+<section class="section container" style="padding-top:20px; padding-bottom:24px;">
   <div class="panel panel-dashed" style="display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
     <div>
       <span class="eyebrow">Run a club?</span>
-      <h3 style="margin:6px 0 0;">Claim your club's listing</h3>
-      <p class="muted" style="margin:6px 0 0; max-width:50ch;">Officers can claim their organization, edit its description, and post real events students can RSVP to — free, in about two minutes.</p>
+      <h3 style="margin:6px 0 0;">Claim your club's listing — free</h3>
+      <p class="muted" style="margin:6px 0 0; max-width:52ch;">Edit your description, add meeting times and links, and post events students can RSVP to. Takes about two minutes.</p>
     </div>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Claim a club</a>
+    <a href="{{ url_for('auth.register') }}" class="btn">Claim a club</a>
+  </div>
+</section>
+
+<section class="section container" style="padding-top:20px;">
+  <div class="trust-strip">
+    <div class="trust-item">
+      <span class="trust-icon trust-icon-0">🔍</span>
+      <strong>Transparent recommendations</strong>
+      <span>We show you how matches work — scores and reasons, not a black box</span>
+    </div>
+    <div class="trust-item">
+      <span class="trust-icon trust-icon-1">🔒</span>
+      <strong>Privacy-first</strong>
+      <span>Your data stays yours. No ads, no tracking, no selling</span>
+    </div>
+    <div class="trust-item">
+      <span class="trust-icon trust-icon-2">💬</span>
+      <strong>Help when you need it</strong>
+      <span><a href="{{ url_for('main.help_page') }}" style="color:var(--purple);">FAQ and support</a> available</span>
+    </div>
   </div>
 </section>
 {% endblock %}

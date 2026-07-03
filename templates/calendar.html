@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+
+{% block content %}
+<section class="section container">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">Your week</span>
+      <h2 style="margin:4px 0 0;">Weekly calendar</h2>
+    </div>
+    <a href="{{ url_for('events.browse') }}" class="view-all">Browse all events →</a>
+  </div>
+  <p class="muted" style="margin-bottom:20px;">Recurring weekly events from public listings and your clubs.
+    <span style="color:var(--green); font-weight:700;">Green</span> means you've RSVP'd.</p>
+
+  <div class="cal-grid">
+    {% for day in weekdays %}
+      <div class="cal-col">
+        <h4>{{ day[:3] }}</h4>
+        {% for event in by_day[day] %}
+          <a class="cal-event {{ 'rsvpd' if event.id in rsvp_ids }}" href="{{ url_for('events.detail', event_id=event.id) }}">
+            <strong>{{ event.name }}</strong>
+            <span>{{ event.time }} · {{ event.location }}</span>
+          </a>
+        {% else %}
+          <div class="cal-empty">—</div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -79,7 +79,8 @@ def recommendations():
     if not prefs:
         return redirect(url_for("main.onboarding"))
 
-    all_clubs = Club.query.all()
+    hidden = current_user.hidden_club_ids
+    all_clubs = [c for c in Club.query.all() if c.id not in hidden]
     all_matches = smart_match_clubs(all_clubs, prefs.category_list(), prefs.major, prefs.time_commitment)
 
     page = int(request.args.get("page", 0))
@@ -89,8 +90,10 @@ def recommendations():
     has_more = end < len(all_matches)
 
     joined_ids = current_user.joined_club_ids
+    saved_ids = current_user.saved_club_ids
     return render_template(
         "recommendations.html",
+        saved_ids=saved_ids,
         matches=matches,
         total_matches=len(all_matches),
         current_page=page,
@@ -130,6 +133,8 @@ def dashboard():
         )
         suggestions = [m for m in all_matches if m["club"].id not in user_club_ids][:3]
 
+    saved = [s.club for s in current_user.saved_clubs if s.kind == "saved"]
+
     stats = {
         "clubs_joined": len(user_clubs),
         "events_rsvpd": len(my_events),
@@ -140,6 +145,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         clubs=user_clubs[:6],
+        saved_clubs=saved[:6],
         my_events=my_events[:6],
         club_events=club_events,
         suggestions=suggestions,
@@ -154,3 +160,44 @@ def about():
         "total_events": Event.query.count(),
     }
     return render_template("about.html", stats=stats)
+
+
+@bp.route("/calendar")
+@login_required
+def calendar():
+    from utils import WEEKDAYS
+    user_club_ids = current_user.joined_club_ids
+    events = (
+        Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
+        .order_by(Event.time).all()
+    )
+    by_day = {day: [] for day in WEEKDAYS}
+    for event in events:
+        by_day.setdefault(event.weekday, []).append(event)
+    rsvp_ids = {r.event_id for r in current_user.rsvps}
+    return render_template("calendar.html", by_day=by_day, weekdays=WEEKDAYS, rsvp_ids=rsvp_ids)
+
+
+@bp.route("/search")
+@login_required
+def search():
+    q = request.args.get("q", "").strip()
+    clubs, events = [], []
+    if q:
+        like = f"%{q}%"
+        clubs = (Club.query.filter(db.or_(Club.name.ilike(like), Club.description.ilike(like)))
+                 .order_by(Club.name).limit(24).all())
+        user_club_ids = current_user.joined_club_ids
+        events = (Event.query
+                  .filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
+                  .filter(db.or_(Event.name.ilike(like), Event.description.ilike(like), Event.location.ilike(like)))
+                  .limit(12).all())
+    joined_ids = current_user.joined_club_ids
+    saved_ids = current_user.saved_club_ids
+    return render_template("search.html", q=q, clubs=clubs, events=events,
+                           joined_ids=joined_ids, saved_ids=saved_ids)
+
+
+@bp.route("/help")
+def help_page():
+    return render_template("help.html")

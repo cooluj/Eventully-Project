@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Eventully{% endblock %} · Eventully</title>
   <meta name="description" content="Discover UW's 1,200+ student clubs, matched to what you actually care about.">
-  <meta name="theme-color" content="#4b2e83">
-  <meta property="og:title" content="Eventully — find your people at UW">
+  <meta name="theme-color" content="#64308b">
+  <meta property="og:title" content="Eventully — find your UW community">
   <meta property="og:description" content="Every registered UW club, matched to your interests, major, and schedule. Officers can claim their club and post events.">
   <meta property="og:type" content="website">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234b2e83'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-style='italic' font-weight='700' font-size='40' fill='%23f4b62a' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b15fd9'/%3E%3Cstop offset='1' stop-color='%2364308b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-family='Arial,sans-serif' font-weight='900' font-size='38' fill='white' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -21,12 +21,12 @@
       <a class="brand" href="{{ url_for('main.index') }}">
         <span class="brand-dot" aria-hidden="true">e</span>
         <span class="brand-mark">Eventully</span>
-        <span class="brand-tag">UW Directory</span>
       </a>
-      <nav>
+      <nav aria-label="Primary">
         <ul class="nav-links">
           {% if current_user.is_authenticated %}
-            <li><a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">Dashboard</a></li>
+            <li><a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">Home</a></li>
+            <li><a href="{{ url_for('main.calendar') }}" class="{{ 'active' if request.endpoint == 'main.calendar' }}">Calendar</a></li>
             <li><a href="{{ url_for('clubs.browse') }}" class="{{ 'active' if request.endpoint == 'clubs.browse' }}">Clubs</a></li>
             <li><a href="{{ url_for('events.browse') }}" class="{{ 'active' if request.endpoint == 'events.browse' }}">Events</a></li>
             {% if current_user.is_officer() %}
@@ -35,14 +35,21 @@
             {% if is_site_admin %}
               <li><a href="{{ url_for('admin.claims') }}" class="{{ 'active' if request.blueprint == 'admin' }}">Admin</a></li>
             {% endif %}
-            <li><a href="{{ url_for('auth.settings') }}" class="{{ 'active' if request.endpoint == 'auth.settings' }}" title="Settings" aria-label="Settings">⚙</a></li>
-            <li><a href="{{ url_for('auth.logout') }}">Log out</a></li>
+            <li><a href="{{ url_for('main.help_page') }}" class="{{ 'active' if request.endpoint == 'main.help_page' }}">Help</a></li>
           {% else %}
+            <li><a href="{{ url_for('main.about') }}" class="{{ 'active' if request.endpoint == 'main.about' }}">About</a></li>
+            <li><a href="{{ url_for('main.help_page') }}" class="{{ 'active' if request.endpoint == 'main.help_page' }}">Help</a></li>
             <li><a href="{{ url_for('auth.login') }}">Log in</a></li>
             <li><a href="{{ url_for('auth.register') }}" class="nav-cta">Get started</a></li>
           {% endif %}
         </ul>
       </nav>
+      {% if current_user.is_authenticated %}
+        <form class="nav-search" method="GET" action="{{ url_for('main.search') }}" role="search">
+          <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Search clubs & events" aria-label="Search clubs and events">
+        </form>
+        <a class="nav-avatar" href="{{ url_for('auth.settings') }}" title="Settings" aria-label="Account settings">{{ current_user.name[0].upper() }}</a>
+      {% endif %}
     </div>
   </header>
 
@@ -66,7 +73,9 @@
     <div class="container footer-grid">
       <div>
         <span class="footer-brand">Event<em>ully</em></span>
-        <span>Built for UW students, by a UW student. · <a href="{{ url_for('main.about') }}" style="color:var(--gold-bright);">About</a></span>
+        <span>Built for UW students, by a UW student. ·
+          <a href="{{ url_for('main.about') }}">About</a> ·
+          <a href="{{ url_for('main.help_page') }}">Help</a></span>
       </div>
       <div style="text-align:right;">
         <span class="colophon">1,231 clubs indexed · Est. 2026 · Seattle, WA</span><br>
