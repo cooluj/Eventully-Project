@@ -1,0 +1,21 @@
+# Render's free tier spins the app down after 15 idle minutes, giving the
+# next visitor a ~50s cold start. Pinging /healthz keeps it warm; one
+# always-on service fits inside Render's 750 free instance-hours/month.
+# Note: GitHub disables scheduled workflows after 60 days without repo
+# activity — any push re-arms it.
+name: Keep Render warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping healthz
+        run: |
+          curl -sS --max-time 40 --retry 3 -o /dev/null \
+            -w "status %{http_code} in %{time_total}s\n" \
+            https://eventully.onrender.com/healthz

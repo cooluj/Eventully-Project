@@ -58,5 +58,9 @@ class Config:
     MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
     MAIL_FROM = os.environ.get("MAIL_FROM") or os.environ.get("SMTP_FROM", "Eventully <hello@eventully.app>")
 
+    # When set (e.g. "eventully.app"), GET requests on any other host 301 to
+    # this one, so the .onrender.com URL doesn't live a parallel life.
+    CANONICAL_HOST = os.environ.get("CANONICAL_HOST", "").strip().lower()
+
     CLUBS_PER_PAGE = 24
     MATCHES_PER_PAGE = 20

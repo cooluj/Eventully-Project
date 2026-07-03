@@ -95,6 +95,19 @@ def create_app(config_class=Config):
         flash("Your session expired — please try that again.", "error")
         return redirect(request.referrer or url_for("main.index"))
 
+    @app.before_request
+    def enforce_canonical_host():
+        canonical = app.config["CANONICAL_HOST"]
+        if not canonical or request.host.lower() == canonical:
+            return None
+        # /healthz stays reachable on the host the platform probes;
+        # only redirect safe methods so in-flight form posts aren't dropped.
+        if request.path == "/healthz" or request.method not in ("GET", "HEAD"):
+            return None
+        return redirect(
+            f"https://{canonical}{request.full_path.rstrip('?')}", code=301
+        )
+
     @app.after_request
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")

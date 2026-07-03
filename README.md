@@ -104,6 +104,17 @@ The app is wired for SMTP, but inbox delivery only works after you attach a prov
 
 After saving those values, open `/admin/launch-readiness` as an admin and click **Send test email**. Only turn `EMAIL_VERIFICATION_REQUIRED=true` after the test email reaches your inbox.
 
+### Custom domain
+
+1. Buy the domain (Cloudflare Registrar sells at cost and its DNS handles the apex-CNAME problem; Porkbun/Namecheap also work).
+2. In Render: service → **Settings → Custom Domains** → add the domain (and `www.` if you want it). Render shows the DNS records to add and provisions TLS automatically once they resolve.
+3. In Resend: **Domains → Add Domain**, then add the SPF/DKIM records it lists at your DNS provider and hit Verify. Set `MAIL_FROM` to `Eventully <hello@yourdomain>`.
+4. Set `CANONICAL_HOST` (e.g. `eventully.app`) in Render — every other host (like the `.onrender.com` URL) then 301s to it. `/healthz` is exempt so Render's health checks keep passing.
+
+### Staying warm on the free tier
+
+Render's free tier spins the app down after 15 idle minutes (~50s cold start for the next visitor). The `keep-warm` GitHub Action pings `/healthz` every 10 minutes to prevent that. GitHub pauses scheduled workflows after 60 days without repo activity — any push re-arms it. For uptime *alerts* on top, point a free UptimeRobot monitor at `/healthz`.
+
 ## Security
 
 - All forms are CSRF-protected (Flask-WTF); passwords are hashed with PBKDF2-SHA256.

@@ -112,6 +112,26 @@ def test_register_rate_limited(client):
         assert User.query.count() == 0
 
 
+def test_canonical_host_redirect():
+    class CanonicalConfig(TestConfig):
+        CANONICAL_HOST = "eventully.app"
+
+    capp = create_app(CanonicalConfig)
+    cclient = capp.test_client()
+
+    resp = cclient.get("/dashboard?tab=events", base_url="http://eventully.onrender.com")
+    assert resp.status_code == 301
+    assert resp.headers["Location"] == "https://eventully.app/dashboard?tab=events"
+
+    # /healthz stays reachable on the host Render probes
+    resp = cclient.get("/healthz", base_url="http://eventully.onrender.com")
+    assert resp.status_code == 200
+
+    # requests already on the canonical host pass through
+    resp = cclient.get("/healthz", base_url="http://eventully.app")
+    assert resp.status_code == 200
+
+
 def test_login_wrong_password(client):
     register(client)
     client.get("/logout")
