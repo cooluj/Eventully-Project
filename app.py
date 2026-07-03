@@ -2,6 +2,7 @@ import os
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_wtf.csrf import CSRFError
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from extensions import csrf, db, login_manager
@@ -10,6 +11,11 @@ from extensions import csrf, db, login_manager
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Render/Heroku terminate TLS at a proxy one hop away. Without this,
+    # request.remote_addr is the proxy IP (breaking per-IP rate limits) and
+    # _external=True links in emails come out http://.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     db.init_app(app)
     login_manager.init_app(app)
@@ -117,6 +123,15 @@ def bootstrap_database(app):
     come up working. Both steps are idempotent; races between workers are
     harmless because seeding skips existing rows.
     """
+    if (
+        app.config["SESSION_COOKIE_SECURE"]
+        and app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite")
+    ):
+        app.logger.warning(
+            "Running in production mode on SQLite. On hosts with ephemeral disks "
+            "(Render, Heroku) ALL DATA IS LOST on every deploy/restart — set "
+            "DATABASE_URL to a Postgres instance before inviting real users."
+        )
     with app.app_context():
         db.create_all()
         try:

@@ -130,7 +130,7 @@ The repo includes a **`render.yaml` Blueprint**. On [Render.com](https://render.
 4. Configure SMTP env vars if you want verification/reset/notification email to send instead of logging.
 5. First boot auto-creates tables and loads all 1,231 clubs (`AUTO_SEED`). Your app is live at the `.onrender.com` URL; add a custom domain in Settings if you want one.
 
-Railway and Fly.io also work: add a Postgres add-on, set `DATABASE_URL` and the env vars above, start command `gunicorn app:app`.
+Railway and Fly.io also work: add a Postgres add-on, set `DATABASE_URL` and the env vars above, start command `gunicorn --workers 1 --threads 8 --timeout 60 app:app`.
 
 ## Notes for future work
 

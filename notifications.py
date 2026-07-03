@@ -1,4 +1,5 @@
 import smtplib
+import threading
 from email.message import EmailMessage
 
 from flask import current_app, url_for
@@ -86,6 +87,12 @@ def send_claim_decision_email(claim):
 
 
 def send_new_message_email(message):
+    """Notify club members/officers of a new message.
+
+    Sends on a background thread over a single SMTP connection: a club with N
+    members must not hold the request open for N sequential SMTP handshakes
+    (that's a guaranteed gunicorn timeout for any real club).
+    """
     recipients = {
         user.email
         for _, user in message.club.officer_users
@@ -94,9 +101,43 @@ def send_new_message_email(message):
     for membership in message.club.memberships:
         if membership.user_id != message.sender_id:
             recipients.add(membership.user.email)
-    for email in recipients:
-        send_email(
-            email,
-            f"New message in {message.club.name}",
-            f"{message.sender.name} posted in {message.club.name}:\n\n{message.body}",
-        )
+    if not recipients:
+        return
+
+    subject = f"New message in {message.club.name}"
+    body = f"{message.sender.name} posted in {message.club.name}:\n\n{message.body}"
+
+    if not current_app.config.get("MAIL_SERVER"):
+        for email in recipients:
+            current_app.logger.info(
+                "Email not configured. To=%s Subject=%s Body=%s", email, subject, body
+            )
+        return
+
+    app = current_app._get_current_object()
+    thread = threading.Thread(
+        target=_send_batch, args=(app, sorted(recipients), subject, body), daemon=True
+    )
+    thread.start()
+
+
+def _send_batch(app, recipients, subject, body):
+    with app.app_context():
+        try:
+            with smtplib.SMTP(app.config["MAIL_SERVER"], app.config["MAIL_PORT"]) as smtp:
+                if app.config["MAIL_USE_TLS"]:
+                    smtp.starttls()
+                if app.config["MAIL_USERNAME"]:
+                    smtp.login(app.config["MAIL_USERNAME"], app.config["MAIL_PASSWORD"])
+                for email in recipients:
+                    message = EmailMessage()
+                    message["From"] = app.config["MAIL_FROM"]
+                    message["To"] = email
+                    message["Subject"] = subject
+                    message.set_content(body)
+                    try:
+                        smtp.send_message(message)
+                    except smtplib.SMTPException:
+                        app.logger.exception("Failed to send message email to %s", email)
+        except Exception:
+            app.logger.exception("Message notification batch failed")

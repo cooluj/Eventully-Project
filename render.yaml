@@ -9,7 +9,9 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    # Single process (the in-memory rate limiter is per-process) with threads
+    # so one slow request doesn't serialize the whole site.
+    startCommand: gunicorn --workers 1 --threads 8 --timeout 60 app:app
     healthCheckPath: /healthz
     envVars:
       - key: SECRET_KEY

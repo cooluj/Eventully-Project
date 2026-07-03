@@ -31,6 +31,8 @@ class TestConfig(Config):
 
 @pytest.fixture
 def app():
+    from blueprints.auth import _attempts
+    _attempts.clear()
     app = create_app(TestConfig)
     with app.app_context():
         db.create_all()
@@ -96,6 +98,16 @@ def test_register_onboarding_recommendations(client):
 def test_register_rejects_non_edu_email(client):
     resp = register(client, email="someone@gmail.com")
     assert ".edu email" in resp.get_data(as_text=True)
+    with client.application.app_context():
+        assert User.query.count() == 0
+
+
+def test_register_rate_limited(client):
+    import time
+    from blueprints.auth import _attempts
+    _attempts["register|127.0.0.1"] = [time.time()] * 50
+    resp = register(client)
+    assert "Too many signups" in resp.get_data(as_text=True)
     with client.application.app_context():
         assert User.query.count() == 0
 

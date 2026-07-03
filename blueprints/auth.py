@@ -20,10 +20,10 @@ MAX_ATTEMPTS = 8
 WINDOW_SECONDS = 15 * 60
 
 
-def _rate_limited(key):
+def _rate_limited(key, max_attempts=MAX_ATTEMPTS):
     now = time.time()
     _attempts[key] = [t for t in _attempts[key] if now - t < WINDOW_SECONDS]
-    return len(_attempts[key]) >= MAX_ATTEMPTS
+    return len(_attempts[key]) >= max_attempts
 
 
 def _record_failure(key):
@@ -111,6 +111,14 @@ def register():
         name = request.form.get("name", "").strip()
         password = request.form.get("password", "")
         confirm = request.form.get("confirm_password", "")
+
+        # Generous cap: a whole club signing up from campus WiFi shares one
+        # NAT IP, so this only needs to stop scripted abuse.
+        limiter_key = f"register|{request.remote_addr}"
+        if _rate_limited(limiter_key, max_attempts=50):
+            flash("Too many signups from this connection. Try again in 15 minutes.", "error")
+            return render_template("register.html", email=email, name=name)
+        _record_failure(limiter_key)
 
         errors = []
         if not name:
