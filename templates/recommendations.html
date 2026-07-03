@@ -3,16 +3,16 @@
 {% block title %}Your matches{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <div class="section-head">
+<section class="app-page container">
+  <div class="page-hero">
     <div>
       <span class="eyebrow">{{ total_matches }} matches found</span>
-      <h2 style="margin:4px 0 0;">Recommended clubs</h2>
+      <h1>Recommended clubs</h1>
+      <p>Ranked by fit with your interests, major, and time. Each card shows why it matched.</p>
     </div>
     <a href="{{ url_for('main.onboarding') }}" class="btn btn-ghost btn-sm">Edit preferences</a>
   </div>
-  <p class="muted" style="margin-bottom:24px;">Ranked by fit with your interests, major, and time.
-    ♡ saves a club to your list · × hides it from your matches.</p>
+  <p class="muted helper-copy">♡ saves a club to your list · × hides it from your matches.</p>
 
   {% if not matches %}
     <div class="empty-state">

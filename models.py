@@ -125,6 +125,19 @@ class Event(db.Model):
 
     rsvps = db.relationship("RSVP", backref="event", cascade="all, delete-orphan")
 
+    # attendee_count is a SQL column_property (defined at the bottom of this
+    # module); these two derive from it.
+    @property
+    def remaining_spots(self):
+        return max((self.capacity or 0) - self.attendee_count, 0)
+
+    @property
+    def capacity_percent(self):
+        if not self.capacity:
+            return 0
+        return min(round((self.attendee_count / self.capacity) * 100), 100)
+
+
 
 class RSVP(db.Model):
     id = db.Column(db.Integer, primary_key=True)

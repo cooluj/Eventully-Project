@@ -4,7 +4,7 @@ from sqlalchemy import func
 
 from extensions import db
 from matching import MAJORS, smart_match_clubs
-from utils import WEEKDAY_ORDER
+from utils import WEEKDAY_ORDER, event_sort_key
 from models import Club, Event, Membership, UserPreference
 
 bp = Blueprint("main", __name__)
@@ -118,9 +118,16 @@ def dashboard():
     # Events from the user's clubs they haven't RSVP'd to yet
     rsvp_ids = {r.event_id for r in current_user.rsvps}
     club_events = (
-        Event.query.filter(Event.club_id.in_(user_club_ids), ~Event.id.in_(rsvp_ids))
-        .limit(3).all()
+        sorted(
+            Event.query.filter(Event.club_id.in_(user_club_ids), ~Event.id.in_(rsvp_ids)).all(),
+            key=event_sort_key,
+        )[:3]
     ) if user_club_ids else []
+
+    featured_events = sorted(
+        Event.query.filter(Event.is_public.is_(True), ~Event.id.in_(rsvp_ids)).all(),
+        key=event_sort_key,
+    )[:6]
 
     # A taste of the matcher: top 3 unjoined matches
     suggestions = []
@@ -134,6 +141,25 @@ def dashboard():
         suggestions = [m for m in all_matches if m["club"].id not in user_club_ids][:3]
 
     saved = [s.club for s in current_user.saved_clubs if s.kind == "saved"]
+    saved_ids = current_user.saved_club_ids
+
+    starter_clubs = []
+    if not user_clubs:
+        starter_clubs = (
+            Club.query.join(Event)
+            .filter(Event.is_public.is_(True))
+            .distinct()
+            .order_by(Club.name)
+            .limit(3)
+            .all()
+        )
+        if len(starter_clubs) < 3:
+            seen = {c.id for c in starter_clubs}
+            starter_clubs.extend(
+                c for c in Club.query.order_by(Club.name).limit(6).all()
+                if c.id not in seen
+            )
+            starter_clubs = starter_clubs[:3]
 
     stats = {
         "clubs_joined": len(user_clubs),
@@ -148,8 +174,12 @@ def dashboard():
         saved_clubs=saved[:6],
         my_events=my_events[:6],
         club_events=club_events,
+        featured_events=featured_events,
         suggestions=suggestions,
+        starter_clubs=starter_clubs,
+        saved_ids=saved_ids,
         stats=stats,
+        has_preferences=current_user.preferences is not None,
     )
 
 
@@ -167,9 +197,9 @@ def about():
 def calendar():
     from utils import WEEKDAYS
     user_club_ids = current_user.joined_club_ids
-    events = (
-        Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
-        .order_by(Event.time).all()
+    events = sorted(
+        Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids))).all(),
+        key=event_sort_key,
     )
     by_day = {day: [] for day in WEEKDAYS}
     for event in events:
@@ -187,10 +217,13 @@ def search():
         clubs = (Club.query.filter(db.or_(Club.name.ilike(like), Club.description.ilike(like)))
                  .order_by(Club.name).limit(24).all())
         user_club_ids = current_user.joined_club_ids if current_user.is_authenticated else set()
-        events = (Event.query
-                  .filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
-                  .filter(db.or_(Event.name.ilike(like), Event.description.ilike(like), Event.location.ilike(like)))
-                  .limit(12).all())
+        events = sorted(
+            Event.query
+            .filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
+            .filter(db.or_(Event.name.ilike(like), Event.description.ilike(like), Event.location.ilike(like)))
+            .limit(12).all(),
+            key=event_sort_key,
+        )
     joined_ids = current_user.joined_club_ids if current_user.is_authenticated else set()
     saved_ids = current_user.saved_club_ids if current_user.is_authenticated else set()
     return render_template("search.html", q=q, clubs=clubs, events=events,

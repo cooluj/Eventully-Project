@@ -59,6 +59,10 @@ def create_app(config_class=Config):
         )
         return {"is_site_admin": is_admin}
 
+    @app.context_processor
+    def inject_demo_flag():
+        return {"show_demo_login": app.config["SEED_DEMO_ACCOUNT"]}
+
     @app.errorhandler(404)
     def not_found(e):
         return render_template("404.html"), 404

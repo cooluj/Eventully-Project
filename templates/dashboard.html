@@ -3,78 +3,178 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <div class="section-head">
-    <div>
-      <span class="eyebrow">Welcome back</span>
-      <h2 style="margin:4px 0 0;">Hey, {{ current_user.name.split(' ')[0] }} 👋</h2>
+<section class="app-page container">
+  <div class="dashboard-hero">
+    <div class="dashboard-copy">
+      <span class="eyebrow">Your campus home base</span>
+      <h1>Good to see you, {{ current_user.name.split(' ')[0] }}</h1>
+      <p>Track the clubs you care about, find events worth showing up for, and keep your shortlist moving.</p>
+      <div class="dashboard-actions">
+        <a href="{{ url_for('main.recommendations') }}" class="btn">View matches</a>
+        <a href="{{ url_for('events.browse') }}" class="btn btn-ghost">Browse events</a>
+      </div>
     </div>
-    <a href="{{ url_for('main.recommendations') }}" class="view-all">My matches →</a>
+    <div class="dashboard-stats">
+      <div class="stat"><span class="stat-num">{{ stats.clubs_joined }}</span><span class="stat-label">Joined clubs</span></div>
+      <div class="stat"><span class="stat-num">{{ stats.events_rsvpd }}</span><span class="stat-label">RSVPs</span></div>
+      <div class="stat"><span class="stat-num">{{ stats.total_available }}</span><span class="stat-label">Clubs indexed</span></div>
+      <div class="stat"><span class="stat-num">{{ stats.officer_of }}</span><span class="stat-label">Officer tools</span></div>
+    </div>
   </div>
 
-  <div class="stat-strip" style="margin-top:8px;">
-    <div class="stat"><span class="stat-num">{{ stats.clubs_joined }}</span><span class="stat-label">Clubs joined</span></div>
-    <div class="stat"><span class="stat-num">{{ stats.events_rsvpd }}</span><span class="stat-label">Events you're going to</span></div>
-    <div class="stat"><span class="stat-num">{{ stats.total_available }}</span><span class="stat-label">Clubs on campus</span></div>
-    <div class="stat"><span class="stat-num">{{ stats.officer_of }}</span><span class="stat-label">Clubs you run</span></div>
+  {% if not has_preferences %}
+    <div class="setup-banner">
+      <div>
+        <span class="eyebrow">Recommended next</span>
+        <h3>Build your club shortlist</h3>
+        <p class="muted">Answer three quick questions and Eventully will rank clubs by your interests, major, and schedule.</p>
+      </div>
+      <div class="action-grid">
+        <a class="mini-action primary" href="{{ url_for('main.onboarding') }}">
+          <strong>Take the survey</strong>
+          <span>Personalize your matches</span>
+        </a>
+        <a class="mini-action" href="{{ url_for('events.browse') }}">
+          <strong>Browse events</strong>
+          <span>See what is happening this week</span>
+        </a>
+        <a class="mini-action" href="{{ url_for('clubs.browse') }}">
+          <strong>Explore clubs</strong>
+          <span>Search the full directory</span>
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="dashboard-layout">
+    <div class="dashboard-main">
+      {% if my_events %}
+        <div class="section-head compact-head">
+          <div>
+            <span class="eyebrow">Your week</span>
+            <h2>Events you are going to</h2>
+          </div>
+          <a href="{{ url_for('main.calendar') }}" class="view-all">Calendar view</a>
+        </div>
+        <div class="event-grid dashboard-events">
+          {% for event in my_events %}{{ event_card(event, rsvp_ids=my_events|map(attribute='id')|list) }}{% endfor %}
+        </div>
+      {% endif %}
+
+      {% if featured_events and not my_events %}
+        <div class="section-head compact-head">
+          <div>
+            <span class="eyebrow">Open this week</span>
+            <h2>Events worth checking out</h2>
+          </div>
+          <a href="{{ url_for('events.browse') }}" class="view-all">All events</a>
+        </div>
+        <div class="event-grid dashboard-events">
+          {% for event in featured_events %}{{ event_card(event) }}{% endfor %}
+        </div>
+      {% endif %}
+
+      {% if club_events %}
+        <div class="section-head compact-head">
+          <div>
+            <span class="eyebrow">From your clubs</span>
+            <h2>Happening where you already belong</h2>
+          </div>
+          <a href="{{ url_for('events.browse') }}" class="view-all">All events</a>
+        </div>
+        <div class="event-grid dashboard-events">
+          {% for event in club_events %}{{ event_card(event) }}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <aside class="dashboard-side">
+      <div class="side-panel">
+        <div class="side-panel-head">
+          <div>
+            <span class="eyebrow">Your clubs</span>
+            <h3>Memberships</h3>
+          </div>
+          <a href="{{ url_for('clubs.browse') }}" class="view-all">Browse</a>
+        </div>
+
+        {% if clubs %}
+          <div class="club-list">
+            {% for club in clubs[:5] %}
+              <a class="club-row" href="{{ url_for('clubs.detail', club_id=club.id) }}">
+                <span class="avatar avatar-{{ club.id % 5 }}">{{ club.avatar_letter }}</span>
+                <span><strong>{{ club.name }}</strong><small>{{ club.category }}</small></span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="soft-empty">
+            <strong>No clubs joined yet</strong>
+            <span>Start with matches or browse the full directory.</span>
+            <a href="{{ url_for('main.recommendations') }}" class="btn btn-sm">See matches</a>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if suggestions %}
+        <div class="side-panel">
+          <div class="side-panel-head">
+            <div>
+              <span class="eyebrow">Picked for you</span>
+              <h3>Top matches</h3>
+            </div>
+            <a href="{{ url_for('main.recommendations') }}" class="view-all">All</a>
+          </div>
+          <div class="club-list">
+            {% for m in suggestions[:3] %}
+              <a class="club-row" href="{{ url_for('clubs.detail', club_id=m.club.id) }}">
+                <span class="avatar avatar-{{ m.club.id % 5 }}">{{ m.club.avatar_letter }}</span>
+                <span><strong>{{ m.club.name }}</strong><small>{{ m.score }}% match</small></span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if starter_clubs %}
+        <div class="side-panel">
+          <div class="side-panel-head">
+            <div>
+              <span class="eyebrow">Explore</span>
+              <h3>Active clubs</h3>
+            </div>
+            <a href="{{ url_for('clubs.browse') }}" class="view-all">More</a>
+          </div>
+          <div class="club-list">
+            {% for club in starter_clubs[:3] %}
+              <a class="club-row" href="{{ url_for('clubs.detail', club_id=club.id) }}">
+                <span class="avatar avatar-{{ club.id % 5 }}">{{ club.avatar_letter }}</span>
+                <span><strong>{{ club.name }}</strong><small>{{ club.category }}</small></span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if saved_clubs %}
+        <div class="side-panel">
+          <div class="side-panel-head">
+            <div>
+              <span class="eyebrow">Saved</span>
+              <h3>Saved for later</h3>
+            </div>
+          </div>
+          <div class="club-list">
+            {% for club in saved_clubs[:4] %}
+              <a class="club-row" href="{{ url_for('clubs.detail', club_id=club.id) }}">
+                <span class="avatar avatar-{{ club.id % 5 }}">{{ club.avatar_letter }}</span>
+                <span><strong>{{ club.name }}</strong><small>{{ club.category }}</small></span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </aside>
   </div>
-
-  {% if my_events %}
-    <div class="section-head" style="margin-top:44px;">
-      <h3 style="margin:0;">Your week</h3>
-      <a href="{{ url_for('main.calendar') }}" class="view-all">Open calendar →</a>
-    </div>
-    <div class="event-grid">
-      {% for event in my_events %}{{ event_card(event, rsvp_ids=my_events|map(attribute='id')|list) }}{% endfor %}
-    </div>
-  {% endif %}
-
-  {% if club_events %}
-    <div class="section-head" style="margin-top:44px;">
-      <h3 style="margin:0;">Happening in your clubs</h3>
-      <a href="{{ url_for('events.browse') }}" class="view-all">All events →</a>
-    </div>
-    <div class="event-grid">
-      {% for event in club_events %}{{ event_card(event) }}{% endfor %}
-    </div>
-  {% endif %}
-
-  <div class="section-head" style="margin-top:44px;">
-    <h3 style="margin:0;">Your clubs</h3>
-    <a href="{{ url_for('clubs.browse') }}" class="view-all">Browse all clubs →</a>
-  </div>
-
-  {% if clubs %}
-    <div class="club-grid">
-      {% for club in clubs %}{{ club_card(club, joined_ids=None) }}{% endfor %}
-    </div>
-  {% else %}
-    <div class="empty-state">
-      <h3>You haven't joined any clubs yet</h3>
-      <p>Take the survey to get a shortlist, or browse the full directory.</p>
-      <a href="{{ url_for('main.recommendations') }}" class="btn">See my matches</a>
-    </div>
-  {% endif %}
-
-  {% if saved_clubs %}
-    <div class="section-head" style="margin-top:44px;">
-      <h3 style="margin:0;">Saved for later ♥</h3>
-    </div>
-    <div class="club-grid">
-      {% for club in saved_clubs %}{{ club_card(club) }}{% endfor %}
-    </div>
-  {% endif %}
-
-  {% if suggestions %}
-    <div class="section-head" style="margin-top:44px;">
-      <h3 style="margin:0;">Picked for you</h3>
-      <a href="{{ url_for('main.recommendations') }}" class="view-all">See all matches →</a>
-    </div>
-    <div class="club-grid">
-      {% for m in suggestions %}
-        {{ club_card(m.club, match=m, show_actions=True, next_url=url_for('main.dashboard')) }}
-      {% endfor %}
-    </div>
-  {% endif %}
 </section>
 {% endblock %}

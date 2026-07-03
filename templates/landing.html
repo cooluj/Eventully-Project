@@ -2,21 +2,64 @@
 {% block title %}Find your UW community{% endblock %}
 
 {% block content %}
-<section class="hero-banner">
-  <div class="big-w" aria-hidden="true">W</div>
-  <div class="container">
-    <h1>Find your UW Community</h1>
-    <p class="hero-sub">{{ stats.total_clubs }} registered student organizations, matched to your
-      interests, your major, and how much time you actually have.</p>
-    <div class="hero-actions">
-      <a href="{{ url_for('auth.register') }}" class="btn btn-hero">Take the survey →</a>
-      <a href="{{ url_for('auth.login') }}" class="btn btn-hero-outline">I have an account</a>
+<section class="make-hero">
+  <div class="container make-hero-grid">
+    <div class="make-hero-copy">
+      <span class="make-kicker">UW clubs, events, and officer tools</span>
+      <h1>Find Your People. Run Your Club. All in One Place.</h1>
+      <p class="hero-sub">Eventully matches students with {{ stats.total_clubs }} campus organizations, live events, and the people behind them. Officers get one clean place to publish, manage, and grow.</p>
+      <div class="hero-actions">
+        <a href="{{ url_for('auth.register') }}" class="btn btn-hero">Find clubs</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-hero-outline">Manage my club</a>
+      </div>
+      <div class="make-stat-row" aria-label="Eventully platform stats">
+        <div><strong>{{ stats.total_clubs }}</strong><span>Clubs indexed</span></div>
+        <div><strong>{{ stats.categories }}</strong><span>Categories</span></div>
+        <div><strong>{{ stats.total_events }}</strong><span>Live events</span></div>
+        <div><strong>.edu</strong><span>Verified access</span></div>
+      </div>
+    </div>
+
+    <div class="make-preview" aria-label="Eventully product preview">
+      <div class="preview-card search-preview">
+        <span class="preview-label">AI search</span>
+        <strong>Find me CS clubs with startup energy</strong>
+        <p>14 matches across technology, business, and design.</p>
+      </div>
+      <div class="preview-card club-preview">
+        <div class="preview-head">
+          <span class="avatar avatar-2">H</span>
+          <div>
+            <strong>Husky Entrepreneurs</strong>
+            <span>Business · 91% match</span>
+          </div>
+        </div>
+        <div class="score-ring" aria-hidden="true"><span>91</span></div>
+        <p>Matches your founder interest, medium time commitment, and evening availability.</p>
+      </div>
+      <div class="preview-card event-preview">
+        <span class="preview-label">Tonight</span>
+        <strong>AI/ML Workshop</strong>
+        <span class="preview-meta">ACM @ UW · CSE 305 · 6:30 PM</span>
+        <div class="capacity-copy">
+          <span>12 spots left</span>
+          <strong>80%</strong>
+        </div>
+        <div class="capacity-track"><span style="width:80%"></span></div>
+        <span class="preview-rsvp">RSVP open</span>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="section container" style="padding-bottom:24px;">
-  <div class="quick-cards">
+<section class="section container make-section">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">Start fast</span>
+      <h2>Everything students check first</h2>
+    </div>
+  </div>
+  <div class="quick-cards feature-cards">
     <a class="quick-card" href="{{ url_for('events.browse') }}">
       <div class="quick-card-img" style="background-image:url('https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800')"></div>
       <div class="quick-card-body">
@@ -38,15 +81,6 @@
         <span>Get personalized club recommendations</span>
       </div>
     </a>
-  </div>
-</section>
-
-<section class="section container" style="padding-top:20px; padding-bottom:24px;">
-  <div class="stat-strip">
-    <div class="stat"><span class="stat-num">{{ stats.total_clubs }}</span><span class="stat-label">Clubs indexed</span></div>
-    <div class="stat"><span class="stat-num">{{ stats.categories }}</span><span class="stat-label">Categories</span></div>
-    <div class="stat"><span class="stat-num">{{ stats.total_events }}</span><span class="stat-label">Live events</span></div>
-    <div class="stat"><span class="stat-num">.edu</span><span class="stat-label">Verified students</span></div>
   </div>
 </section>
 

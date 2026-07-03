@@ -1,5 +1,6 @@
 """Smart club matching algorithm: scores every club against a student's
 selected categories, major, and time-commitment preference."""
+import re
 
 MAJOR_KEYWORDS = {
     "Computer Science": ["computer", "software", "coding", "programming", "tech", "cs", "algorithm", "ai", "data", "cyber"],
@@ -23,12 +24,19 @@ COMMITMENT_KEYWORDS = {
 MAJORS = list(MAJOR_KEYWORDS.keys()) + ["Other"]
 
 
+def keyword_matches(text, keyword):
+    if len(keyword) <= 3:
+        return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+    return keyword in text
+
+
 def smart_match_clubs(clubs, categories, major="", time_commitment=""):
     """clubs: list of Club model instances. Returns a list of dicts sorted by score desc."""
     matches = []
+    categories = set(categories or [])
 
     if not categories and not major:
-        for club in clubs:
+        for club in sorted(clubs, key=lambda c: (-c.member_count, c.name)):
             matches.append({"club": club, "score": 50, "reasons": ["Browse all UW clubs"], "badge": None})
         return matches
 
@@ -36,23 +44,30 @@ def smart_match_clubs(clubs, categories, major="", time_commitment=""):
         score = 0
         reasons = []
         club_text = f"{club.name} {club.description}".lower()
+        major_hits = []
 
         if categories and club.category in categories:
-            score += 50
+            score += 55
             reasons.append(f"{club.category} club")
 
         if major and major in MAJOR_KEYWORDS:
             for keyword in MAJOR_KEYWORDS[major]:
-                if keyword in club_text:
-                    score += 40
-                    reasons.append(f"Great for {major} students")
-                    break
+                if keyword_matches(club_text, keyword):
+                    major_hits.append(keyword)
+            if major_hits:
+                score += min(35, 15 + (len(major_hits) * 5))
+                reasons.append(f"Connects with {major}")
 
         if time_commitment:
             for keyword in COMMITMENT_KEYWORDS.get(time_commitment, []):
-                if keyword in club_text:
+                if keyword_matches(club_text, keyword):
                     score += 10
+                    reasons.append("Fits your time commitment")
                     break
+
+        # Time-commitment keywords alone are too weak to make a club feel relevant.
+        if not reasons or reasons == ["Fits your time commitment"]:
+            continue
 
         badge = None
         if score >= 80:
@@ -70,10 +85,18 @@ def smart_match_clubs(clubs, categories, major="", time_commitment=""):
                 "badge": badge,
             })
 
-    matches.sort(key=lambda m: m["score"], reverse=True)
+    matches.sort(
+        key=lambda m: (
+            m["score"],
+            len(m["reasons"]),
+            m["club"].member_count,
+            -len(m["club"].name),
+        ),
+        reverse=True,
+    )
 
     if not matches and categories:
-        for club in clubs:
+        for club in sorted(clubs, key=lambda c: c.name):
             if club.category in categories:
                 matches.append({"club": club, "score": 50, "reasons": [f"{club.category} club"], "badge": "good"})
 

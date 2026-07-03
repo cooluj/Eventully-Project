@@ -1,7 +1,20 @@
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote_plus, urlencode, urljoin, urlparse
 
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 WEEKDAY_ORDER = {d: i for i, d in enumerate(WEEKDAYS)}
+
+
+def event_sort_key(event):
+    return (WEEKDAY_ORDER.get(event.weekday, len(WEEKDAYS)), event.time or "", event.name or "")
+
+
+def is_safe_next_url(target, host_url):
+    """Return True only for same-origin redirects."""
+    if not target:
+        return False
+    ref = urlparse(host_url)
+    test = urlparse(urljoin(host_url, target))
+    return test.scheme in {"http", "https"} and ref.netloc == test.netloc
 
 
 def build_calendar_link(event):

@@ -3,13 +3,14 @@
 {% block title %}Browse clubs{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <div class="section-head">
+<section class="app-page container">
+  <div class="page-hero">
     <div>
       <span class="eyebrow">{{ result_count }} clubs</span>
-      <h2 style="margin:4px 0 0;">The full directory</h2>
+      <h1>The full directory</h1>
+      <p>Find clubs by interest, activity level, and whether an officer is already maintaining the listing.</p>
     </div>
-    <form method="GET" action="{{ url_for('clubs.browse') }}" style="display:flex; gap:8px;">
+    <form class="directory-search" method="GET" action="{{ url_for('clubs.browse') }}">
       <input type="hidden" name="category" value="{{ current_category }}">
       <input type="hidden" name="status" value="{{ current_status }}">
       <input type="hidden" name="sort" value="{{ current_sort }}">
@@ -18,19 +19,29 @@
     </form>
   </div>
 
-  <div class="category-strip" style="margin-bottom:10px;">
-    {% for cat in categories %}
-      <a class="chip {{ 'active' if cat == current_category }}" href="{{ url_for('clubs.browse', category=cat, search=search_query, status=current_status, sort=current_sort) }}">{{ cat }}</a>
-    {% endfor %}
-  </div>
-  <div class="category-strip" style="margin-bottom:28px;">
-    {% for s, label in [('all', 'Any status'), ('claimed', 'Officer active'), ('unclaimed', 'Unclaimed')] %}
-      <a class="chip {{ 'active' if s == current_status }}" href="{{ url_for('clubs.browse', category=current_category, search=search_query, status=s, sort=current_sort) }}">{{ label }}</a>
-    {% endfor %}
-    <span style="width:12px;"></span>
-    {% for s, label in [('name', 'A–Z'), ('members', 'Most members')] %}
-      <a class="chip {{ 'active' if s == current_sort }}" href="{{ url_for('clubs.browse', category=current_category, search=search_query, status=current_status, sort=s) }}">{{ label }}</a>
-    {% endfor %}
+  <div class="filter-panel">
+    <div class="filter-row">
+      <span class="filter-label">Category</span>
+      <div class="category-strip">
+        {% for cat in categories %}
+          <a class="chip {{ 'active' if cat == current_category }}" href="{{ url_for('clubs.browse', category=cat, search=search_query, status=current_status, sort=current_sort) }}">{{ cat }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="filter-row compact">
+      <span class="filter-label">Status</span>
+      <div class="category-strip">
+        {% for s, label in [('all', 'Any status'), ('claimed', 'Officer active'), ('unclaimed', 'Unclaimed')] %}
+          <a class="chip {{ 'active' if s == current_status }}" href="{{ url_for('clubs.browse', category=current_category, search=search_query, status=s, sort=current_sort) }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+      <span class="filter-label">Sort</span>
+      <div class="category-strip">
+        {% for s, label in [('name', 'A-Z'), ('members', 'Most members')] %}
+          <a class="chip {{ 'active' if s == current_sort }}" href="{{ url_for('clubs.browse', category=current_category, search=search_query, status=current_status, sort=s) }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 
   {% if not clubs %}
