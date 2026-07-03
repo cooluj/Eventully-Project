@@ -700,6 +700,38 @@ def test_admin_launch_readiness_test_email_without_smtp(client):
     assert "Email delivery is not configured" in resp.get_data(as_text=True)
 
 
+def test_remove_demo_events(client, app):
+    from seed import DEMO_EVENTS
+
+    register(client, email="admin@uw.edu", name="Site Admin")
+    with app.app_context():
+        event = Event(club_id=1, name=DEMO_EVENTS[0]["name"], capacity=10, is_public=True)
+        db.session.add(event)
+        db.session.commit()
+        admin = User.query.filter_by(email="admin@uw.edu").first()
+        db.session.add(RSVP(user_id=admin.id, event_id=event.id))
+        db.session.commit()
+
+    html = client.get("/admin/launch-readiness").get_data(as_text=True)
+    assert "seeded sample event(s) are still live" in html
+
+    resp = post(client, "/admin/launch-readiness/remove-demo-events", "/admin/launch-readiness")
+    html = resp.get_data(as_text=True)
+    assert "Removed 1 demo event(s)" in html
+    assert "No seeded sample events remain" in html
+    with app.app_context():
+        assert Event.query.count() == 0
+        assert RSVP.query.count() == 0
+
+
+def test_demo_events_not_seeded_without_flag(app):
+    from seed import seed_clubs
+
+    with app.app_context():
+        seed_clubs()
+        assert Event.query.count() == 0
+
+
 # ---------- club messages ----------
 
 def test_member_and_officer_can_use_club_messages(client, app):

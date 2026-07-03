@@ -85,7 +85,7 @@ Set these in `.env` locally, or in your host's dashboard when deploying:
 | `FLASK_DEBUG` | Never `true` in production. | `true` locally |
 | `SECURE_COOKIES` | Set `true` in production (HTTPS) — marks session cookies Secure. | `false` |
 | `AUTO_SEED` | Create tables + load the club directory on boot. Makes fresh deploys work with zero shell access. | `true` |
-| `SEED_DEMO_ACCOUNT` | Seeds `demo@uw.edu`. **Set `false` in production** — its password is public. | `true` |
+| `SEED_DEMO_ACCOUNT` | Seeds `demo@uw.edu` and the sample demo events. **Set `false` in production** — the password is public and the events are fictional. | `true` |
 | `EMAIL_VERIFICATION_REQUIRED` | When `true`, blocks unverified users from club claims and officer tools. Configure SMTP first. | `false` |
 | `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_USE_TLS` | SMTP settings for verification, reset, claim, team, and message notification emails. | disabled |
 

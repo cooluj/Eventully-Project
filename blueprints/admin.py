@@ -5,7 +5,7 @@ from flask import Blueprint, abort, current_app, flash, redirect, render_templat
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Club, ClubClaim
+from models import Club, ClubClaim, Event, RSVP
 from notifications import send_claim_decision_email, send_email
 from production_checks import run_launch_checks
 
@@ -55,6 +55,26 @@ def test_email():
         flash(f"Test email sent to {current_user.email}.", "success")
     else:
         flash("Email delivery is not configured or the SMTP provider rejected the message.", "error")
+    return redirect(url_for("admin.launch_readiness"))
+
+
+@bp.route("/launch-readiness/remove-demo-events", methods=["POST"])
+@login_required
+@admin_only
+def remove_demo_events():
+    from seed import DEMO_EVENTS
+
+    names = [event["name"] for event in DEMO_EVENTS]
+    events = Event.query.filter(Event.name.in_(names)).all()
+    if not events:
+        flash("No demo events found — the database is clean.", "info")
+    else:
+        event_ids = [event.id for event in events]
+        RSVP.query.filter(RSVP.event_id.in_(event_ids)).delete(synchronize_session=False)
+        for event in events:
+            db.session.delete(event)
+        db.session.commit()
+        flash(f"Removed {len(events)} demo event(s) and their RSVPs.", "success")
     return redirect(url_for("admin.launch_readiness"))
 
 

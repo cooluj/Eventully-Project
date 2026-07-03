@@ -11,6 +11,10 @@
     </div>
     <div class="pill-row">
       <a href="{{ url_for('admin.claims') }}" class="btn btn-ghost btn-sm">Claims</a>
+      <form method="POST" action="{{ url_for('admin.remove_demo_events') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-ghost btn-sm">Remove demo events</button>
+      </form>
       <form method="POST" action="{{ url_for('admin.test_email') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-sm">Send test email</button>

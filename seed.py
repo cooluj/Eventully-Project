@@ -102,26 +102,28 @@ def seed_clubs():
         db.session.add(demo)
         db.session.commit()
 
-    # Sample events so the Events page isn't empty on first run.
-    # Idempotent per event: safe to re-run after adding new demo events.
-    existing_events = {e.name for e in Event.query.with_entities(Event.name).all()}
-    for e in DEMO_EVENTS:
-        if e["name"] in existing_events:
-            continue
-        club = Club.query.filter_by(name=e["club"]).first()
-        if not club:
-            continue
-        db.session.add(Event(
-            club_id=club.id,
-            name=e["name"],
-            description=e["description"],
-            weekday=e["weekday"],
-            time=e["time"],
-            location=e["location"],
-            image_url=e["image_url"],
-            capacity=e["capacity"],
-            is_public=True,
-        ))
-    db.session.commit()
+    # Sample events so the Events page isn't empty on first run. These are
+    # fictional events under real club names, so they're demo content only —
+    # production (SEED_DEMO_ACCOUNT=false) must never seed them.
+    if current_app.config["SEED_DEMO_ACCOUNT"]:
+        existing_events = {e.name for e in Event.query.with_entities(Event.name).all()}
+        for e in DEMO_EVENTS:
+            if e["name"] in existing_events:
+                continue
+            club = Club.query.filter_by(name=e["club"]).first()
+            if not club:
+                continue
+            db.session.add(Event(
+                club_id=club.id,
+                name=e["name"],
+                description=e["description"],
+                weekday=e["weekday"],
+                time=e["time"],
+                location=e["location"],
+                image_url=e["image_url"],
+                capacity=e["capacity"],
+                is_public=True,
+            ))
+        db.session.commit()
 
     return added

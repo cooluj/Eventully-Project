@@ -1,6 +1,15 @@
+def _demo_event_count():
+    from models import Event
+    from seed import DEMO_EVENTS
+
+    names = [event["name"] for event in DEMO_EVENTS]
+    return Event.query.filter(Event.name.in_(names)).count()
+
+
 def run_launch_checks(app):
     """Return admin-facing production readiness checks."""
     config = app.config
+    demo_events = _demo_event_count()
     database_url = config.get("SQLALCHEMY_DATABASE_URI", "")
     admin_emails = {email.lower() for email in config.get("ADMIN_EMAILS", set())}
     mail_from = config.get("MAIL_FROM", "")
@@ -48,6 +57,15 @@ def run_launch_checks(app):
             if not config.get("SEED_DEMO_ACCOUNT")
             else "The public demo account can still be seeded.",
             "action": "Set SEED_DEMO_ACCOUNT=false in production.",
+        },
+        {
+            "key": "demo-events",
+            "title": "Demo events removed",
+            "status": "pass" if demo_events == 0 else "fail",
+            "detail": "No seeded sample events remain in the database."
+            if demo_events == 0
+            else f"{demo_events} seeded sample event(s) are still live under real club names — students could RSVP to events that don't exist.",
+            "action": 'Click "Remove demo events" above to delete them and their RSVPs.',
         },
         {
             "key": "secure-cookies",
