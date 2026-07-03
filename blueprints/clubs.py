@@ -8,7 +8,6 @@ bp = Blueprint("clubs", __name__)
 
 
 @bp.route("/clubs")
-@login_required
 def browse():
     category = request.args.get("category", "all")
     search = request.args.get("search", "").strip()
@@ -41,8 +40,8 @@ def browse():
     has_more = (page + 1) * per_page < total
 
     categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
-    joined_ids = current_user.joined_club_ids
-    saved_ids = current_user.saved_club_ids
+    joined_ids = current_user.joined_club_ids if current_user.is_authenticated else set()
+    saved_ids = current_user.saved_club_ids if current_user.is_authenticated else set()
 
     return render_template(
         "clubs.html",
@@ -61,13 +60,16 @@ def browse():
 
 
 @bp.route("/club/<int:club_id>")
-@login_required
 def detail(club_id):
     club = Club.query.get_or_404(club_id)
-    is_member = club.id in current_user.joined_club_ids
-    is_saved = club.id in current_user.saved_club_ids
-    is_officer = club.officer_id == current_user.id
-    pending_claim = ClubClaim.query.filter_by(club_id=club.id, user_id=current_user.id, status="pending").first()
+    if current_user.is_authenticated:
+        is_member = club.id in current_user.joined_club_ids
+        is_saved = club.id in current_user.saved_club_ids
+        is_officer = club.officer_id == current_user.id
+        pending_claim = ClubClaim.query.filter_by(club_id=club.id, user_id=current_user.id, status="pending").first()
+    else:
+        is_member = is_saved = is_officer = False
+        pending_claim = None
     similar = Club.query.filter(Club.category == club.category, Club.id != club.id).limit(4).all()
 
     return render_template(

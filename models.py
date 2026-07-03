@@ -79,10 +79,6 @@ class Club(db.Model):
         return self.officer_id is not None
 
     @property
-    def member_count(self):
-        return len(self.memberships)
-
-    @property
     def directory_number(self):
         # A stable, catalog-style ID used in the UI (e.g. "No. 0842")
         return f"{self.id:04d}"
@@ -129,10 +125,6 @@ class Event(db.Model):
 
     rsvps = db.relationship("RSVP", backref="event", cascade="all, delete-orphan")
 
-    @property
-    def attendee_count(self):
-        return len(self.rsvps)
-
 
 class RSVP(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -169,3 +161,22 @@ class UserPreference(db.Model):
 
     def category_list(self):
         return [c for c in self.categories.split(",") if c]
+
+
+# SQL-side counts, loaded with the row itself — avoids N+1 lazy loads when
+# rendering card grids. Defined after the classes so both sides exist.
+from sqlalchemy import func, select  # noqa: E402
+
+Club.member_count = db.column_property(
+    select(func.count(Membership.id))
+    .where(Membership.club_id == Club.id)
+    .correlate_except(Membership)
+    .scalar_subquery()
+)
+
+Event.attendee_count = db.column_property(
+    select(func.count(RSVP.id))
+    .where(RSVP.event_id == Event.id)
+    .correlate_except(RSVP)
+    .scalar_subquery()
+)

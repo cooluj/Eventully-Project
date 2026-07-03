@@ -119,3 +119,11 @@ def attendees(event_id):
         abort(403)
     rsvps = sorted(event.rsvps, key=lambda r: r.created_at)
     return render_template("event_attendees.html", event=event, rsvps=rsvps)
+
+
+@bp.route("/club/<int:club_id>/members")
+@login_required
+@owns_club
+def members(club):
+    member_rows = sorted(club.memberships, key=lambda m: m.joined_at)
+    return render_template("club_members.html", club=club, memberships=member_rows)

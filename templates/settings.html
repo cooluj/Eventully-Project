@@ -52,9 +52,24 @@
     </form>
   </div>
 
+  <div class="panel" style="margin-top:20px; border-color:#efc4c0;">
+    <h3 style="font-size:1.1rem; color:var(--red);">Delete account</h3>
+    <p class="muted" style="margin-bottom:14px; font-size:0.9rem;">Permanently removes your account,
+      memberships, RSVPs, and saved clubs. Clubs you officer become unclaimed. This can't be undone.</p>
+    <form method="POST" action="{{ url_for('auth.delete_account') }}"
+          onsubmit="return confirm('Delete your account permanently? This cannot be undone.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field" style="max-width:280px;">
+        <label for="delete_password">Confirm with your password</label>
+        <input type="password" id="delete_password" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-brick btn-sm">Delete my account</button>
+    </form>
+  </div>
+
   <p class="muted" style="margin-top:24px; font-size:0.85rem;">
     Member since {{ current_user.created_at.strftime("%B %Y") }} ·
-    <a href="{{ url_for('auth.logout') }}" style="color:var(--brick);">Log out</a>
+    <a href="{{ url_for('auth.logout') }}" style="color:var(--red);">Log out</a>
   </p>
 </section>
 {% endblock %}

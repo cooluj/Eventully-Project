@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Members · {{ club.name }}{% endblock %}
+
+{% block content %}
+<section class="section container" style="max-width:720px;">
+  <span class="eyebrow">{{ club.name }}</span>
+  <h2 style="margin-top:8px;">Member list</h2>
+  <p class="muted">{{ memberships|length }} member{{ 's' if memberships|length != 1 }} — students who joined your club on Eventully.</p>
+
+  {% if memberships %}
+    <table class="data-table" style="margin-top:16px;">
+      <tr><th>#</th><th>Name</th><th>Email</th><th>Joined</th></tr>
+      {% for m in memberships %}
+        <tr>
+          <td class="mono">{{ loop.index }}</td>
+          <td>{{ m.user.name }}</td>
+          <td><a href="mailto:{{ m.user.email }}" style="color:var(--purple);">{{ m.user.email }}</a></td>
+          <td class="mono muted">{{ m.joined_at.strftime("%b %d, %Y") }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+    <p class="hint" style="margin-top:14px;">Emails are shown so you can welcome new members — please don't use them for anything else.</p>
+  {% else %}
+    <div class="empty-state" style="margin-top:24px;">
+      <h3>No members yet</h3>
+      <p>Share your club page with prospective members — joins will show up here.</p>
+    </div>
+  {% endif %}
+
+  <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-sm" style="margin-top:20px;">← Back to officer dashboard</a>
+</section>
+{% endblock %}

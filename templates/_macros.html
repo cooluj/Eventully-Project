@@ -23,7 +23,7 @@
     <div class="club-card-head">
       <span class="avatar avatar-{{ club.id % 5 }}">{{ club.avatar_letter }}</span>
       <h3>{{ club.name }}</h3>
-      {% if show_actions %}
+      {% if show_actions and current_user.is_authenticated %}
         <div class="card-actions">
           <form method="POST" action="{{ url_for('clubs.save', club_id=club.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

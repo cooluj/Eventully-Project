@@ -29,6 +29,17 @@ services:
       # Set this to YOUR email in the Render dashboard so you can approve club claims
       - key: ADMIN_EMAILS
         sync: false
+      # Optional: SMTP credentials enable password-reset emails (e.g. Brevo/Resend free tier)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
 
 databases:
   - name: eventully-db

@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
@@ -9,12 +9,13 @@ bp = Blueprint("events", __name__)
 
 
 def _visible_events_query():
+    if not current_user.is_authenticated:
+        return Event.query.filter(Event.is_public.is_(True))
     user_club_ids = current_user.joined_club_ids
     return Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
 
 
 @bp.route("/events")
-@login_required
 def browse():
     category = request.args.get("category", "all")
     day = request.args.get("day", "all")
@@ -27,7 +28,7 @@ def browse():
 
     visible_events = query.order_by(Event.weekday).all()
     categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
-    rsvp_ids = {r.event_id for r in current_user.rsvps}
+    rsvp_ids = {r.event_id for r in current_user.rsvps} if current_user.is_authenticated else set()
 
     return render_template(
         "events.html",
@@ -41,10 +42,11 @@ def browse():
 
 
 @bp.route("/event/<int:event_id>")
-@login_required
 def detail(event_id):
     event = Event.query.get_or_404(event_id)
-    is_rsvpd = RSVP.query.filter_by(event_id=event.id, user_id=current_user.id).first() is not None
+    if not event.is_public and (not current_user.is_authenticated or event.club_id not in current_user.joined_club_ids):
+        abort(404)
+    is_rsvpd = current_user.is_authenticated and RSVP.query.filter_by(event_id=event.id, user_id=current_user.id).first() is not None
     return render_template(
         "event_detail.html", event=event, is_rsvpd=is_rsvpd, calendar_link=build_calendar_link(event)
     )

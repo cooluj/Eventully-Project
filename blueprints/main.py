@@ -179,7 +179,6 @@ def calendar():
 
 
 @bp.route("/search")
-@login_required
 def search():
     q = request.args.get("q", "").strip()
     clubs, events = [], []
@@ -187,13 +186,13 @@ def search():
         like = f"%{q}%"
         clubs = (Club.query.filter(db.or_(Club.name.ilike(like), Club.description.ilike(like)))
                  .order_by(Club.name).limit(24).all())
-        user_club_ids = current_user.joined_club_ids
+        user_club_ids = current_user.joined_club_ids if current_user.is_authenticated else set()
         events = (Event.query
                   .filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
                   .filter(db.or_(Event.name.ilike(like), Event.description.ilike(like), Event.location.ilike(like)))
                   .limit(12).all())
-    joined_ids = current_user.joined_club_ids
-    saved_ids = current_user.saved_club_ids
+    joined_ids = current_user.joined_club_ids if current_user.is_authenticated else set()
+    saved_ids = current_user.saved_club_ids if current_user.is_authenticated else set()
     return render_template("search.html", q=q, clubs=clubs, events=events,
                            joined_ids=joined_ids, saved_ids=saved_ids)
 
@@ -201,3 +200,29 @@ def search():
 @bp.route("/help")
 def help_page():
     return render_template("help.html")
+
+
+@bp.route("/robots.txt")
+def robots():
+    from flask import Response
+    return Response("User-agent: *\nAllow: /\nSitemap: " + url_for("main.sitemap", _external=True) + "\n",
+                    mimetype="text/plain")
+
+
+@bp.route("/sitemap.xml")
+def sitemap():
+    from flask import Response
+    pages = [url_for("main.index", _external=True),
+             url_for("main.about", _external=True),
+             url_for("main.help_page", _external=True),
+             url_for("clubs.browse", _external=True),
+             url_for("events.browse", _external=True)]
+    pages += [url_for("clubs.detail", club_id=c.id, _external=True)
+              for c in Club.query.with_entities(Club.id).all()]
+    pages += [url_for("events.detail", event_id=e.id, _external=True)
+              for e in Event.query.filter_by(is_public=True).with_entities(Event.id).all()]
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    xml += [f"<url><loc>{p}</loc></url>" for p in pages]
+    xml.append("</urlset>")
+    return Response("\n".join(xml), mimetype="application/xml")

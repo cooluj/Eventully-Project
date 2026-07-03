@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, club_card, event_card %}
+{% from "_macros.html" import icon, club_card, event_card with context %}
 {% block title %}{{ club.name }}{% endblock %}
 
 {% block content %}
@@ -42,7 +42,10 @@
     {% endif %}
 
     <div class="hero-actions" style="margin-top:22px;">
-      {% if is_member %}
+      {% if not current_user.is_authenticated %}
+        <a href="{{ url_for('auth.login', next=request.path) }}" class="btn">Log in to join</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-outline">Create an account</a>
+      {% elif is_member %}
         <form method="POST" action="{{ url_for('clubs.leave', club_id=club.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-outline">Leave club</button>
@@ -54,14 +57,16 @@
         </form>
       {% endif %}
 
+      {% if current_user.is_authenticated %}
       <form method="POST" action="{{ url_for('clubs.save', club_id=club.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-ghost">{{ "♥ Saved" if is_saved else "♡ Save for later" }}</button>
       </form>
+      {% endif %}
 
-      {% if is_officer %}
+      {% if current_user.is_authenticated and is_officer %}
         <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-outline">Manage listing</a>
-      {% elif not club.is_claimed %}
+      {% elif current_user.is_authenticated and not club.is_claimed %}
         {% if pending_claim %}
           <span class="badge badge-unclaimed" style="padding:11px 18px;">Claim request pending review</span>
         {% else %}

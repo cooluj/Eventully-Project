@@ -5,12 +5,12 @@
 <section class="section container">
   <div style="max-width:700px;">
     {% if event.image_url %}
-      <div class="ticket-img" style="height:220px; border-radius:3px; margin-bottom:20px; border:1px solid var(--line); background-image:url('{{ event.image_url }}')"></div>
+      <div class="ticket-img" style="height:220px; border-radius:3px; margin-bottom:20px; border:1px solid var(--hairline-soft); background-image:url('{{ event.image_url }}')"></div>
     {% endif %}
 
     <span class="eyebrow">{{ event.club.category }}</span>
     <h1 style="margin-top:8px;">{{ event.name }}</h1>
-    <p class="muted">Hosted by <a href="{{ url_for('clubs.detail', club_id=event.club.id) }}" style="color:var(--gold-dark); font-weight:600;">{{ event.club.name }}</a></p>
+    <p class="muted">Hosted by <a href="{{ url_for('clubs.detail', club_id=event.club.id) }}" style="color:var(--purple); font-weight:600;">{{ event.club.name }}</a></p>
 
     <table class="data-table" style="margin:20px 0;">
       <tr><th>When</th><td>{{ event.weekday }}, {{ event.time }}</td></tr>
@@ -22,6 +22,9 @@
     <p>{{ event.description }}</p>
 
     <div class="hero-actions">
+      {% if not current_user.is_authenticated %}
+        <a href="{{ url_for('auth.login', next=request.path) }}" class="btn">Log in to RSVP</a>
+      {% else %}
       <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn {{ 'btn-outline' if is_rsvpd else 'btn-gold' }}"
@@ -29,8 +32,9 @@
           {% if is_rsvpd %}Cancel RSVP{% elif event.attendee_count >= event.capacity %}Event full{% else %}RSVP{% endif %}
         </button>
       </form>
+      {% endif %}
       <a href="{{ calendar_link }}" target="_blank" rel="noopener" class="btn btn-outline">Google Calendar</a>
-      <a href="{{ url_for('events.ics', event_id=event.id) }}" class="btn btn-ghost">Download .ics</a>
+      {% if current_user.is_authenticated %}<a href="{{ url_for('events.ics', event_id=event.id) }}" class="btn btn-ghost">Download .ics</a>{% endif %}
     </div>
   </div>
 </section>

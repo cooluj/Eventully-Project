@@ -50,5 +50,27 @@
       {% endfor %}
     </table>
   {% endif %}
+  <h3 style="margin-top:40px;">Claimed clubs ({{ claimed_clubs|length }})</h3>
+  {% if not claimed_clubs %}
+    <p class="muted">No clubs are claimed yet.</p>
+  {% else %}
+    <table class="data-table">
+      <tr><th>Club</th><th>Officer</th><th>Claimed</th><th></th></tr>
+      {% for club in claimed_clubs %}
+        <tr>
+          <td><a href="{{ url_for('clubs.detail', club_id=club.id) }}" style="color:var(--purple); font-weight:700;">{{ club.name }}</a></td>
+          <td>{{ club.officer.name }} · {{ club.officer.email }}</td>
+          <td class="mono">{{ club.claimed_at.strftime('%b %d, %Y') if club.claimed_at }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.revoke', club_id=club.id) }}"
+                  onsubmit="return confirm('Remove this officer? The listing becomes unclaimed.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red); border-color:#efc4c0;">Revoke</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
 </section>
 {% endblock %}

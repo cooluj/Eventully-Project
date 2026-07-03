@@ -413,3 +413,129 @@ def test_officer_dues_hours_shown_on_card(client, app):
     html = client.get("/club/1").get_data(as_text=True)
     assert "No dues" in html and "3 hours/week" in html
     assert "Last updated: today" in html
+
+
+# ---------- public directory ----------
+
+def test_directory_public_for_anonymous(client, app):
+    event_id = make_event(app)
+    assert client.get("/clubs").status_code == 200
+    assert client.get("/club/1").status_code == 200
+    assert client.get("/events").status_code == 200
+    assert client.get(f"/event/{event_id}").status_code == 200
+    html = client.get("/club/1").get_data(as_text=True)
+    assert "Log in to join" in html
+
+
+def test_private_event_hidden_from_anonymous(client, app):
+    event_id = make_event(app, public=False)
+    assert client.get(f"/event/{event_id}").status_code == 404
+    html = client.get("/events").get_data(as_text=True)
+    assert "Test Meetup" not in html
+
+
+def test_sitemap_and_robots(client):
+    resp = client.get("/sitemap.xml")
+    assert resp.status_code == 200
+    assert "/club/1" in resp.get_data(as_text=True)
+    resp = client.get("/robots.txt")
+    assert resp.status_code == 200
+    assert "Sitemap:" in resp.get_data(as_text=True)
+
+
+# ---------- password reset ----------
+
+def test_password_reset_flow(client, app):
+    register(client)
+    client.get("/logout")
+
+    resp = post(client, "/forgot-password", "/forgot-password", email="student@uw.edu")
+    assert "emailed a reset link" in resp.get_data(as_text=True)
+
+    from itsdangerous import URLSafeTimedSerializer
+    with app.app_context():
+        user_id = User.query.filter_by(email="student@uw.edu").first().id
+    token = URLSafeTimedSerializer(TestConfig.SECRET_KEY, salt="password-reset").dumps(user_id)
+
+    resp = post(client, f"/reset-password/{token}", f"/reset-password/{token}",
+                password="brandnewpass1", confirm_password="brandnewpass1")
+    assert "Password updated" in resp.get_data(as_text=True)
+
+    resp = login(client, "student@uw.edu", password="brandnewpass1")
+    assert "Welcome back" in resp.get_data(as_text=True)
+
+
+def test_password_reset_bad_token(client):
+    resp = client.get("/reset-password/not-a-real-token", follow_redirects=True)
+    assert "reset link" in resp.get_data(as_text=True) and "valid" in resp.get_data(as_text=True)
+
+
+# ---------- rate limiting ----------
+
+def test_login_rate_limited_after_failures(client):
+    register(client)
+    client.get("/logout")
+    for _ in range(8):
+        login(client, "student@uw.edu", password="wrongpassword")
+    resp = login(client, "student@uw.edu", password="testpass123")  # correct, but locked
+    assert "Too many failed attempts" in resp.get_data(as_text=True)
+
+
+# ---------- account deletion ----------
+
+def test_account_deletion_releases_officer_clubs(client, app):
+    register(client, email="owner@uw.edu")
+    with app.app_context():
+        user = User.query.filter_by(email="owner@uw.edu").first()
+        club = db.session.get(Club, 1)
+        club.officer_id = user.id
+        db.session.commit()
+
+    resp = post(client, "/settings/delete", "/settings", password="wrongpass")
+    assert "Incorrect password" in resp.get_data(as_text=True)
+
+    resp = post(client, "/settings/delete", "/settings", password="testpass123")
+    assert "account and data have been deleted" in resp.get_data(as_text=True)
+    with app.app_context():
+        assert User.query.filter_by(email="owner@uw.edu").first() is None
+        assert db.session.get(Club, 1).officer_id is None
+
+
+# ---------- officer member list + admin revoke ----------
+
+def test_officer_member_list(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+
+    register(client, email="member@uw.edu", name="Member Student")
+    post(client, "/club/1/join", "/club/1")
+    assert client.get("/officer/club/1/members").status_code == 403
+    client.get("/logout")
+
+    login(client, "owner@uw.edu")
+    html = client.get("/officer/club/1/members").get_data(as_text=True)
+    assert "Member Student" in html and "member@uw.edu" in html
+
+
+def test_admin_revokes_officer(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        club = db.session.get(Club, 1)
+        club.officer_id = owner.id
+        db.session.commit()
+
+    register(client, email="admin@uw.edu", name="Site Admin")
+    html = client.get("/admin/claims").get_data(as_text=True)
+    assert "Claimed clubs (1)" in html
+    resp = post(client, "/admin/clubs/1/revoke", "/admin/claims")
+    assert "no longer the officer" in resp.get_data(as_text=True)
+    with app.app_context():
+        assert db.session.get(Club, 1).officer_id is None

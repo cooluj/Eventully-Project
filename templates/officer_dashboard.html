@@ -21,6 +21,7 @@
             <h3 style="margin:4px 0 0;">{{ club.name }}</h3>
           </div>
           <div class="pill-row">
+            <a href="{{ url_for('officer.members', club_id=club.id) }}" class="btn btn-ghost btn-sm">Members</a>
             <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-ghost btn-sm">Edit listing</a>
             <a href="{{ url_for('officer.new_event', club_id=club.id) }}" class="btn btn-gold btn-sm">Post an event</a>
           </div>
