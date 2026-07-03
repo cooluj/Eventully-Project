@@ -31,6 +31,7 @@
             <li><a href="{{ url_for('main.calendar') }}" class="{{ 'active' if request.endpoint == 'main.calendar' }}">Calendar</a></li>
             <li><a href="{{ url_for('clubs.browse') }}" class="{{ 'active' if request.endpoint == 'clubs.browse' }}">Clubs</a></li>
             <li><a href="{{ url_for('events.browse') }}" class="{{ 'active' if request.endpoint == 'events.browse' }}">Events</a></li>
+            <li><a href="{{ url_for('messages.inbox') }}" class="{{ 'active' if request.blueprint == 'messages' }}">Messages</a></li>
             {% if current_user.is_officer() %}
               <li><a href="{{ url_for('officer.dashboard') }}" class="{{ 'active' if request.blueprint == 'officer' }}">Officer</a></li>
             {% endif %}
@@ -57,6 +58,15 @@
   </header>
 
   <div class="container">
+    {% if current_user.is_authenticated and not current_user.is_email_verified %}
+      <div class="verification-banner">
+        <span><strong>Verify your email</strong> to strengthen officer claims, team invites, and account recovery.</span>
+        <form method="POST" action="{{ url_for('auth.resend_verification') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm">Send link</button>
+        </form>
+      </div>
+    {% endif %}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <ul class="flashes">
@@ -78,7 +88,9 @@
         <span class="footer-brand">Event<em>ully</em></span>
         <span>Built for UW students, by a UW student. ·
           <a href="{{ url_for('main.about') }}">About</a> ·
-          <a href="{{ url_for('main.help_page') }}">Help</a></span>
+          <a href="{{ url_for('main.help_page') }}">Help</a> ·
+          <a href="{{ url_for('main.privacy') }}">Privacy</a> ·
+          <a href="{{ url_for('main.terms') }}">Terms</a></span>
       </div>
       <div style="text-align:right;">
         <span class="colophon">1,231 clubs indexed · Est. 2026 · Seattle, WA</span><br>

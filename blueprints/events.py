@@ -22,7 +22,7 @@ def _can_view_event(event):
         return False
     return (
         event.club_id in current_user.joined_club_ids
-        or event.club.officer_id == current_user.id
+        or event.club.can_manage(current_user)
         or current_user.is_admin(current_app.config["ADMIN_EMAILS"])
     )
 

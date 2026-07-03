@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(120), nullable=False)
     university = db.Column(db.String(120), default="University of Washington")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    email_verified_at = db.Column(db.DateTime, nullable=True)
 
     preferences = db.relationship(
         "UserPreference", backref="user", uselist=False, cascade="all, delete-orphan"
@@ -21,6 +22,12 @@ class User(UserMixin, db.Model):
         "Membership", backref="user", cascade="all, delete-orphan"
     )
     officer_of = db.relationship("Club", backref="officer", foreign_keys="Club.officer_id")
+    club_roles = db.relationship(
+        "ClubRole",
+        backref="user",
+        cascade="all, delete-orphan",
+        foreign_keys="ClubRole.user_id",
+    )
     rsvps = db.relationship("RSVP", backref="user", cascade="all, delete-orphan")
 
     def set_password(self, raw_password):
@@ -32,10 +39,29 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, raw_password)
 
     def is_officer(self):
-        return len(self.officer_of) > 0
+        return len(self.officer_of) > 0 or len(self.club_roles) > 0
 
     def is_admin(self, admin_emails):
         return self.email.lower() in admin_emails
+
+    @property
+    def is_email_verified(self):
+        return self.email_verified_at is not None
+
+    @property
+    def managed_club_ids(self):
+        return {c.id for c in self.officer_of} | {r.club_id for r in self.club_roles}
+
+    @property
+    def managed_clubs(self):
+        seen = set()
+        clubs = []
+        for club in list(self.officer_of) + [role.club for role in self.club_roles]:
+            if club.id in seen:
+                continue
+            seen.add(club.id)
+            clubs.append(club)
+        return clubs
 
     @property
     def joined_club_ids(self):
@@ -72,11 +98,45 @@ class Club(db.Model):
         "Membership", backref="club", cascade="all, delete-orphan"
     )
     events = db.relationship("Event", backref="club", cascade="all, delete-orphan")
+    roles = db.relationship(
+        "ClubRole", backref="club", cascade="all, delete-orphan", foreign_keys="ClubRole.club_id"
+    )
+    messages = db.relationship(
+        "ClubMessage", backref="club", cascade="all, delete-orphan", order_by="ClubMessage.created_at"
+    )
     claims = db.relationship("ClubClaim", backref="club", cascade="all, delete-orphan")
 
     @property
     def is_claimed(self):
         return self.officer_id is not None
+
+    def can_manage(self, user):
+        if not getattr(user, "is_authenticated", False):
+            return False
+        return self.officer_id == user.id or self.id in user.managed_club_ids
+
+    def role_for(self, user):
+        if not getattr(user, "is_authenticated", False):
+            return None
+        if self.officer_id == user.id:
+            return "owner"
+        for role in self.roles:
+            if role.user_id == user.id:
+                return role.role
+        return None
+
+    @property
+    def officer_users(self):
+        users = []
+        seen = set()
+        if self.officer:
+            users.append(("owner", self.officer))
+            seen.add(self.officer.id)
+        for role in self.roles:
+            if role.user_id not in seen:
+                users.append((role.role, role.user))
+                seen.add(role.user_id)
+        return users
 
     @property
     def directory_number(self):
@@ -103,10 +163,49 @@ class ClubClaim(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     message = db.Column(db.Text, default="")
     status = db.Column(db.String(20), default="pending")  # pending / approved / rejected
+    decision_note = db.Column(db.Text, default="")
+    decided_by = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     decided_at = db.Column(db.DateTime, nullable=True)
 
     requester = db.relationship("User", foreign_keys=[user_id])
+    reviewer = db.relationship("User", foreign_keys=[decided_by])
+
+
+class ClubRole(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    role = db.Column(db.String(24), default="officer", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    invited_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+
+    invited_by = db.relationship("User", foreign_keys=[invited_by_id])
+
+    __table_args__ = (db.UniqueConstraint("club_id", "user_id", name="uq_club_role"),)
+
+
+class ClubMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False, index=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+
+    sender = db.relationship("User", foreign_keys=[sender_id])
+    deleted_by = db.relationship("User", foreign_keys=[deleted_by_id])
+
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
+    @property
+    def is_from_officer(self):
+        return self.club.officer_id == self.sender_id or self.sender_id in {
+            role.user_id for role in self.club.roles
+        }
 
 
 class Event(db.Model):

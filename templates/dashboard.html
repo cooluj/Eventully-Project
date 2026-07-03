@@ -12,6 +12,7 @@
       <div class="dashboard-actions">
         <a href="{{ url_for('main.recommendations') }}" class="btn">View matches</a>
         <a href="{{ url_for('events.browse') }}" class="btn btn-ghost">Browse events</a>
+        <a href="{{ url_for('messages.inbox') }}" class="btn btn-ghost">Messages</a>
       </div>
     </div>
     <div class="dashboard-stats">
@@ -41,6 +42,10 @@
         <a class="mini-action" href="{{ url_for('clubs.browse') }}">
           <strong>Explore clubs</strong>
           <span>Search the full directory</span>
+        </a>
+        <a class="mini-action" href="{{ url_for('messages.inbox') }}">
+          <strong>Messages</strong>
+          <span>Talk with club officers</span>
         </a>
       </div>
     </div>
@@ -107,6 +112,7 @@
               </a>
             {% endfor %}
           </div>
+          <a href="{{ url_for('messages.inbox') }}" class="btn btn-ghost btn-sm btn-block" style="margin-top:12px;">Open messages</a>
         {% else %}
           <div class="soft-empty">
             <strong>No clubs joined yet</strong>

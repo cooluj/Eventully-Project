@@ -6,6 +6,18 @@
   <span class="eyebrow">Your account</span>
   <h2 style="margin-top:8px;">Settings</h2>
 
+  {% if not current_user.is_email_verified %}
+    <div class="panel panel-dashed" style="margin-top:20px;">
+      <span class="eyebrow">Verification</span>
+      <h3 style="font-size:1.1rem; margin-top:6px;">Verify your email</h3>
+      <p class="muted" style="margin-bottom:14px;">Verified accounts help officers and admins trust club claims, team invites, and member messages.</p>
+      <form method="POST" action="{{ url_for('auth.resend_verification') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm">Send verification link</button>
+      </form>
+    </div>
+  {% endif %}
+
   <div class="panel" style="margin-top:24px;">
     <h3 style="font-size:1.1rem;">Profile</h3>
     <form method="POST" action="{{ url_for('auth.settings') }}">
@@ -18,7 +30,7 @@
       <div class="field">
         <label>Email</label>
         <input type="email" value="{{ current_user.email }}" disabled>
-        <p class="hint">Your email is your login and can't be changed.</p>
+        <p class="hint">Your email is your login and can't be changed. {{ "Verified" if current_user.is_email_verified else "Not verified yet" }}.</p>
       </div>
       <button type="submit" class="btn btn-primary btn-sm">Save profile</button>
     </form>

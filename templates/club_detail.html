@@ -64,7 +64,11 @@
       </form>
       {% endif %}
 
-      {% if current_user.is_authenticated and is_officer %}
+      {% if is_member or is_officer %}
+        <a href="{{ url_for('messages.thread', club_id=club.id) }}" class="btn btn-ghost">Message club</a>
+      {% endif %}
+
+      {% if is_officer %}
         <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-outline">Manage listing</a>
       {% elif current_user.is_authenticated and not club.is_claimed %}
         {% if pending_claim %}

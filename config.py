@@ -49,6 +49,14 @@ class Config:
 
     # Require a .edu address to register. Set to "false" to allow any email (useful for testing).
     REQUIRE_EDU_EMAIL = os.environ.get("REQUIRE_EDU_EMAIL", "true").lower() == "true"
+    EMAIL_VERIFICATION_REQUIRED = os.environ.get("EMAIL_VERIFICATION_REQUIRED", "false").lower() == "true"
+
+    MAIL_SERVER = os.environ.get("MAIL_SERVER") or os.environ.get("SMTP_HOST", "")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT") or os.environ.get("SMTP_PORT", "587"))
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME") or os.environ.get("SMTP_USERNAME", "")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD") or os.environ.get("SMTP_PASSWORD", "")
+    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
+    MAIL_FROM = os.environ.get("MAIL_FROM") or os.environ.get("SMTP_FROM", "Eventully <hello@eventully.app>")
 
     CLUBS_PER_PAGE = 24
     MATCHES_PER_PAGE = 20

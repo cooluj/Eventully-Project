@@ -13,7 +13,8 @@ os.environ["SEED_DEMO_ACCOUNT"] = "false"
 from app import create_app
 from config import Config
 from extensions import db
-from models import Club, Event, Membership, RSVP, User
+from models import Club, ClubMessage, ClubRole, Event, Membership, RSVP, User
+from notifications import make_email_token
 
 
 class TestConfig(Config):
@@ -24,6 +25,8 @@ class TestConfig(Config):
     REQUIRE_EDU_EMAIL = True
     ADMIN_EMAILS = {"admin@uw.edu"}
     SECRET_KEY = "test-key"
+    EMAIL_VERIFICATION_REQUIRED = False
+    MAIL_SERVER = ""
 
 
 @pytest.fixture
@@ -113,6 +116,37 @@ def test_login_rejects_external_next_url(client):
     })
     assert resp.status_code == 302
     assert resp.headers["Location"] == "/dashboard"
+
+
+def test_email_verification_marks_account_verified(client, app):
+    register(client)
+    with app.app_context():
+        user = User.query.filter_by(email="student@uw.edu").first()
+        assert user.email_verified_at is None
+        token = make_email_token(user, "verify-email")
+
+    resp = client.get(f"/verify-email/{token}", follow_redirects=True)
+    assert "Email verified" in resp.get_data(as_text=True)
+    with app.app_context():
+        assert User.query.filter_by(email="student@uw.edu").first().email_verified_at is not None
+
+
+def test_password_reset_flow(client, app):
+    register(client)
+    client.get("/logout")
+    with app.app_context():
+        user = User.query.filter_by(email="student@uw.edu").first()
+        token = make_email_token(user, "reset-password")
+
+    resp = client.post(f"/reset-password/{token}", data={
+        "csrf_token": get_token(client, f"/reset-password/{token}"),
+        "password": "freshpass123",
+        "confirm_password": "freshpass123",
+    }, follow_redirects=True)
+    assert "Password reset" in resp.get_data(as_text=True)
+
+    resp = login(client, "student@uw.edu", password="freshpass123")
+    assert "Welcome back" in resp.get_data(as_text=True)
 
 
 def test_protected_pages_redirect_anonymous(client):
@@ -275,6 +309,33 @@ def test_non_officer_cannot_edit_club(client, app):
     token = get_token(client, "/club/1")
     resp = client.post("/officer/club/1/edit", data={"csrf_token": token, "description": "hacked"})
     assert resp.status_code == 403
+
+
+def test_owner_can_add_co_officer_who_can_manage_club(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        helper = User(email="helper@uw.edu", name="Helper")
+        helper.set_password("testpass123")
+        db.session.add_all([owner, helper])
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+
+    login(client, "owner@uw.edu")
+    resp = post(client, "/officer/club/1/team", "/officer/",
+                email="helper@uw.edu", role="communications")
+    assert "can now help manage Robotics Club" in resp.get_data(as_text=True)
+    with app.app_context():
+        assert ClubRole.query.count() == 1
+
+    client.get("/logout")
+    login(client, "helper@uw.edu")
+    html = client.get("/officer/").get_data(as_text=True)
+    assert "Robotics Club" in html
+    resp = post(client, "/officer/club/1/edit", "/officer/club/1/edit",
+                description="Updated by the helper.")
+    assert "has been updated" in resp.get_data(as_text=True)
 
 
 def test_non_admin_cannot_see_claims(client):
@@ -508,29 +569,17 @@ def test_sitemap_and_robots(client):
 
 # ---------- password reset ----------
 
-def test_password_reset_flow(client, app):
+def test_forgot_password_request_accepts_existing_email(client):
     register(client)
     client.get("/logout")
 
     resp = post(client, "/forgot-password", "/forgot-password", email="student@uw.edu")
-    assert "emailed a reset link" in resp.get_data(as_text=True)
-
-    from itsdangerous import URLSafeTimedSerializer
-    with app.app_context():
-        user_id = User.query.filter_by(email="student@uw.edu").first().id
-    token = URLSafeTimedSerializer(TestConfig.SECRET_KEY, salt="password-reset").dumps(user_id)
-
-    resp = post(client, f"/reset-password/{token}", f"/reset-password/{token}",
-                password="brandnewpass1", confirm_password="brandnewpass1")
-    assert "Password updated" in resp.get_data(as_text=True)
-
-    resp = login(client, "student@uw.edu", password="brandnewpass1")
-    assert "Welcome back" in resp.get_data(as_text=True)
+    assert "reset link is on the way" in resp.get_data(as_text=True)
 
 
 def test_password_reset_bad_token(client):
     resp = client.get("/reset-password/not-a-real-token", follow_redirects=True)
-    assert "reset link" in resp.get_data(as_text=True) and "valid" in resp.get_data(as_text=True)
+    assert "reset link is invalid" in resp.get_data(as_text=True)
 
 
 # ---------- rate limiting ----------
@@ -602,3 +651,57 @@ def test_admin_revokes_officer(client, app):
     assert "no longer the officer" in resp.get_data(as_text=True)
     with app.app_context():
         assert db.session.get(Club, 1).officer_id is None
+
+
+# ---------- club messages ----------
+
+def test_member_and_officer_can_use_club_messages(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+
+    register(client, email="member@uw.edu", name="Member Student")
+    post(client, "/club/1/join", "/club/1")
+    html = client.get("/messages/club/1").get_data(as_text=True)
+    assert "Club messages" in html
+    assert "Message Robotics Club" in html
+
+    resp = post(client, "/messages/club/1", "/messages/club/1", body="Can I come to the next meeting?")
+    html = resp.get_data(as_text=True)
+    assert "Message sent" in html
+    assert "Can I come to the next meeting?" in html
+    with app.app_context():
+        assert ClubMessage.query.count() == 1
+
+    client.get("/logout")
+    login(client, "owner@uw.edu")
+    html = client.get("/messages/club/1").get_data(as_text=True)
+    assert "Can I come to the next meeting?" in html
+    resp = post(client, "/messages/club/1", "/messages/club/1", body="Yes, stop by at 6.")
+    html = resp.get_data(as_text=True)
+    assert "Yes, stop by at 6." in html
+    assert "Officer" in html
+
+    with app.app_context():
+        message_id = ClubMessage.query.filter_by(body="Can I come to the next meeting?").first().id
+    resp = post(client, f"/messages/message/{message_id}/delete", "/messages/club/1")
+    html = resp.get_data(as_text=True)
+    assert "Message removed" in html
+    with app.app_context():
+        assert ClubMessage.query.get(message_id).is_deleted
+
+
+def test_non_member_cannot_read_club_messages(client, app):
+    register(client, email="outsider@uw.edu")
+    assert client.get("/messages/club/1").status_code == 403
+
+
+def test_privacy_and_terms_pages_public(client):
+    assert client.get("/privacy").status_code == 200
+    assert "Privacy policy" in client.get("/privacy").get_data(as_text=True)
+    assert client.get("/terms").status_code == 200
+    assert "Terms of use" in client.get("/terms").get_data(as_text=True)

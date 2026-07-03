@@ -1,11 +1,12 @@
 from datetime import datetime
 from functools import wraps
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
 from models import Club, ClubClaim
+from notifications import send_claim_decision_email
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -47,8 +48,11 @@ def approve(claim_id):
         claim.status = "approved"
         flash(f"{claim.requester.name} is now the officer for {claim.club.name}.", "success")
 
+    claim.decision_note = request.form.get("decision_note", "").strip()
+    claim.decided_by = current_user.id
     claim.decided_at = datetime.utcnow()
     db.session.commit()
+    send_claim_decision_email(claim)
     return redirect(url_for("admin.claims"))
 
 
@@ -59,8 +63,11 @@ def reject(claim_id):
     claim = ClubClaim.query.get_or_404(claim_id)
     if claim.status == "pending":
         claim.status = "rejected"
+        claim.decision_note = request.form.get("decision_note", "").strip()
+        claim.decided_by = current_user.id
         claim.decided_at = datetime.utcnow()
         db.session.commit()
+        send_claim_decision_email(claim)
         flash("Claim rejected.", "info")
     return redirect(url_for("admin.claims"))
 

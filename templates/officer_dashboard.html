@@ -23,11 +23,50 @@
           <div class="pill-row">
             <a href="{{ url_for('officer.members', club_id=club.id) }}" class="btn btn-ghost btn-sm">Members</a>
             <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-ghost btn-sm">Edit listing</a>
+            <a href="{{ url_for('messages.thread', club_id=club.id) }}" class="btn btn-ghost btn-sm">Open inbox</a>
             <a href="{{ url_for('officer.new_event', club_id=club.id) }}" class="btn btn-gold btn-sm">Post an event</a>
           </div>
         </div>
 
         <p class="muted">{{ club.member_count }} member{{ 's' if club.member_count != 1 }}</p>
+
+        <div class="officer-team">
+          <div>
+            <span class="eyebrow">Officer team</span>
+            <div class="team-list">
+              {% for role, user in club.officer_users %}
+                <div class="team-member">
+                  <span class="avatar avatar-{{ user.id % 5 }}">{{ user.name[0].upper() }}</span>
+                  <span><strong>{{ user.name }}</strong><small>{{ role }} · {{ user.email }}</small></span>
+                  {% if role != "owner" and club.officer_id == current_user.id %}
+                    {% for club_role in club.roles %}
+                      {% if club_role.user_id == user.id %}
+                        <form method="POST" action="{{ url_for('officer.remove_team_member', club_id=club.id, role_id=club_role.id) }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="icon-btn" title="Remove officer" aria-label="Remove {{ user.name }}">×</button>
+                        </form>
+                      {% endif %}
+                    {% endfor %}
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <form method="POST" action="{{ url_for('officer.add_team_member', club_id=club.id) }}" class="team-invite">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="team-email-{{ club.id }}">Add co-officer</label>
+            <div class="team-invite-row">
+              <input id="team-email-{{ club.id }}" type="email" name="email" placeholder="officer@uw.edu" required>
+              <select name="role" aria-label="Officer role">
+                <option value="officer">Officer</option>
+                <option value="events">Events</option>
+                <option value="communications">Comms</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button type="submit" class="btn btn-sm">Add</button>
+            </div>
+          </form>
+        </div>
 
         {% if club.events %}
           <table class="data-table">

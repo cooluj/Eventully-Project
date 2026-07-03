@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<section class="app-page container">
+  <div class="page-hero messages-hero">
+    <div>
+      <span class="eyebrow">{{ conversations|length }} conversation{{ 's' if conversations|length != 1 }}</span>
+      <h1>Club messages</h1>
+      <p>Talk with officers and members in one focused thread for each club you belong to or manage.</p>
+    </div>
+    {% if selected_club %}
+      <a href="{{ url_for('clubs.detail', club_id=selected_club.id) }}" class="btn btn-ghost">View club</a>
+    {% endif %}
+  </div>
+
+  {% if not conversations %}
+    <div class="empty-state messages-empty">
+      <h3>No club conversations yet</h3>
+      <p>Join a club to unlock its member thread, or claim a club to start messaging members as an officer.</p>
+      <div class="hero-actions">
+        <a href="{{ url_for('clubs.browse') }}" class="btn">Browse clubs</a>
+        <a href="{{ url_for('main.recommendations') }}" class="btn btn-ghost">See matches</a>
+      </div>
+    </div>
+  {% else %}
+    <div class="messages-shell">
+      <aside class="thread-list" aria-label="Club conversations">
+        {% for item in conversations %}
+          {% set club = item.club %}
+          <a class="thread-card {{ 'active' if selected_club and club.id == selected_club.id }}" href="{{ url_for('messages.thread', club_id=club.id) }}">
+            <span class="avatar avatar-{{ club.id % 5 }}">{{ club.avatar_letter }}</span>
+            <span class="thread-card-copy">
+              <span class="thread-card-top">
+                <strong>{{ club.name }}</strong>
+                {% if item.latest %}<small>{{ item.latest.created_at|days_ago }}</small>{% endif %}
+              </span>
+              <span class="thread-card-preview">
+                {% if item.latest %}
+                  {% if item.latest.is_deleted %}
+                    Message removed
+                  {% else %}
+                    {{ item.latest.sender.name.split(' ')[0] }}: {{ item.latest.body }}
+                  {% endif %}
+                {% else %}
+                  Start the conversation with members and officers.
+                {% endif %}
+              </span>
+              <span class="thread-card-meta">
+                {% if item.is_officer %}<em>Officer</em>{% elif item.is_member %}<em>Member</em>{% endif %}
+                <span>{{ club.member_count }} member{{ 's' if club.member_count != 1 }}</span>
+                <span>{{ item.message_count }} message{{ 's' if item.message_count != 1 }}</span>
+              </span>
+            </span>
+          </a>
+        {% endfor %}
+      </aside>
+
+      <section class="chat-panel" aria-label="Selected conversation">
+        {% if selected_club %}
+          <div class="chat-head">
+            <span class="avatar avatar-{{ selected_club.id % 5 }}">{{ selected_club.avatar_letter }}</span>
+            <div>
+              <span class="make-kicker">{{ selected_club.category }}</span>
+              <h2>{{ selected_club.name }}</h2>
+              <div class="chat-head-meta">
+                {% if selected_club.officer %}
+                  <span>Officer: {{ selected_club.officer.name }}</span>
+                {% else %}
+                  <span>No officer claimed yet</span>
+                {% endif %}
+                <span>{{ selected_club.member_count }} member{{ 's' if selected_club.member_count != 1 }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="message-stream">
+            {% if thread_messages %}
+              {% for message in thread_messages %}
+                <article class="message-bubble {{ 'mine' if message.sender_id == current_user.id }} {{ 'officer-message' if message.is_from_officer }}">
+                  <div class="message-meta">
+                    <strong>{{ message.sender.name }}</strong>
+                    {% if message.is_from_officer %}
+                      <span>Officer</span>
+                    {% elif message.sender_id == current_user.id %}
+                      <span>You</span>
+                    {% else %}
+                      <span>Member</span>
+                    {% endif %}
+                  </div>
+                  {% if message.is_deleted %}
+                    <p class="muted"><em>Message removed by {{ message.deleted_by.name if message.deleted_by else "a moderator" }}.</em></p>
+                  {% else %}
+                    <p>{{ message.body }}</p>
+                  {% endif %}
+                  <time datetime="{{ message.created_at.isoformat() }}">{{ message.created_at|short_datetime }}</time>
+                  {% if not message.is_deleted and (message.sender_id == current_user.id or selected_club.can_manage(current_user) or is_site_admin) %}
+                    <form method="POST" action="{{ url_for('messages.delete_message', message_id=message.id) }}" class="message-delete-form">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit">Remove</button>
+                    </form>
+                  {% endif %}
+                </article>
+              {% endfor %}
+            {% else %}
+              <div class="thread-empty">
+                <strong>No messages here yet</strong>
+                <span>Send the first note so the club has a place for quick questions, event updates, and officer replies.</span>
+              </div>
+            {% endif %}
+          </div>
+
+          <form class="message-composer" method="POST" action="{{ url_for('messages.thread', club_id=selected_club.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="body">Message {{ selected_club.name }}</label>
+            <textarea id="body" name="body" rows="3" maxlength="1200" placeholder="Ask a question, share an update, or send a quick officer announcement..." required></textarea>
+            <div class="composer-actions">
+              <span>Visible to club members, officers, and site admins.</span>
+              <button type="submit" class="btn">Send message</button>
+            </div>
+          </form>
+        {% endif %}
+      </section>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

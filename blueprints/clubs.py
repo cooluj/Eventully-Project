@@ -65,7 +65,7 @@ def detail(club_id):
     if current_user.is_authenticated:
         is_member = club.id in current_user.joined_club_ids
         is_saved = club.id in current_user.saved_club_ids
-        is_officer = club.officer_id == current_user.id
+        is_officer = club.can_manage(current_user)
         pending_claim = ClubClaim.query.filter_by(club_id=club.id, user_id=current_user.id, status="pending").first()
     else:
         is_member = is_saved = is_officer = False
@@ -109,6 +109,10 @@ def leave(club_id):
 @login_required
 def claim(club_id):
     club = Club.query.get_or_404(club_id)
+
+    if current_app.config["EMAIL_VERIFICATION_REQUIRED"] and not current_user.is_email_verified:
+        flash("Verify your email before claiming a club.", "error")
+        return redirect(url_for("auth.settings"))
 
     if club.is_claimed:
         flash("This club has already been claimed by an officer.", "error")

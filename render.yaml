@@ -26,20 +26,24 @@ services:
         value: "false"
       - key: REQUIRE_EDU_EMAIL
         value: "true"
+      - key: EMAIL_VERIFICATION_REQUIRED
+        value: "false"
       # Set this to YOUR email in the Render dashboard so you can approve club claims
       - key: ADMIN_EMAILS
         sync: false
-      # Optional: SMTP credentials enable password-reset emails (e.g. Brevo/Resend free tier)
-      - key: SMTP_HOST
+      # Configure these to enable verification, reset, claim, team, and message emails.
+      - key: MAIL_SERVER
         sync: false
-      - key: SMTP_PORT
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
         sync: false
-      - key: SMTP_USERNAME
+      - key: MAIL_PASSWORD
         sync: false
-      - key: SMTP_PASSWORD
+      - key: MAIL_FROM
         sync: false
-      - key: SMTP_FROM
-        sync: false
+      - key: MAIL_USE_TLS
+        value: "true"
 
 databases:
   - name: eventully-db

@@ -165,7 +165,7 @@ def dashboard():
         "clubs_joined": len(user_clubs),
         "events_rsvpd": len(my_events),
         "total_available": Club.query.count(),
-        "officer_of": len(current_user.officer_of),
+        "officer_of": len(current_user.managed_clubs),
     }
 
     return render_template(
@@ -233,6 +233,16 @@ def search():
 @bp.route("/help")
 def help_page():
     return render_template("help.html")
+
+
+@bp.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
+@bp.route("/terms")
+def terms():
+    return render_template("terms.html")
 
 
 @bp.route("/robots.txt")

@@ -1,10 +1,11 @@
 from functools import wraps
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Club, Event
+from models import Club, ClubRole, Event, User
+from notifications import send_email
 from utils import WEEKDAYS
 
 bp = Blueprint("officer", __name__, url_prefix="/officer")
@@ -14,8 +15,11 @@ def owns_club(view):
     @wraps(view)
     def wrapped(club_id, *args, **kwargs):
         club = Club.query.get_or_404(club_id)
-        if club.officer_id != current_user.id:
+        if not club.can_manage(current_user):
             abort(403)
+        if current_app.config["EMAIL_VERIFICATION_REQUIRED"] and not current_user.is_email_verified:
+            flash("Verify your email before using officer tools.", "error")
+            return redirect(url_for("auth.settings"))
         return view(club, *args, **kwargs)
     return wrapped
 
@@ -23,7 +27,7 @@ def owns_club(view):
 @bp.route("/")
 @login_required
 def dashboard():
-    clubs = list(current_user.officer_of)
+    clubs = current_user.managed_clubs
     return render_template("officer_dashboard.html", clubs=clubs)
 
 
@@ -79,7 +83,7 @@ def new_event(club):
 @login_required
 def edit_event(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.club.officer_id != current_user.id:
+    if not event.club.can_manage(current_user):
         abort(403)
 
     if request.method == "POST":
@@ -102,7 +106,7 @@ def edit_event(event_id):
 @login_required
 def delete_event(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.club.officer_id != current_user.id:
+    if not event.club.can_manage(current_user):
         abort(403)
     name = event.name
     db.session.delete(event)
@@ -115,7 +119,7 @@ def delete_event(event_id):
 @login_required
 def attendees(event_id):
     event = Event.query.get_or_404(event_id)
-    if event.club.officer_id != current_user.id:
+    if not event.club.can_manage(current_user):
         abort(403)
     rsvps = sorted(event.rsvps, key=lambda r: r.created_at)
     return render_template("event_attendees.html", event=event, rsvps=rsvps)
@@ -127,3 +131,52 @@ def attendees(event_id):
 def members(club):
     member_rows = sorted(club.memberships, key=lambda m: m.joined_at)
     return render_template("club_members.html", club=club, memberships=member_rows)
+
+
+@bp.route("/club/<int:club_id>/team", methods=["POST"])
+@login_required
+@owns_club
+def add_team_member(club):
+    email = request.form.get("email", "").strip().lower()
+    role_name = request.form.get("role", "officer").strip().lower() or "officer"
+    allowed_roles = {"officer", "events", "communications", "admin"}
+    if role_name not in allowed_roles:
+        role_name = "officer"
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash("That user needs to create an Eventully account before you can add them.", "error")
+        return redirect(url_for("officer.dashboard"))
+    if club.officer_id == user.id:
+        flash(f"{user.name} is already the club owner.", "info")
+        return redirect(url_for("officer.dashboard"))
+
+    existing = ClubRole.query.filter_by(club_id=club.id, user_id=user.id).first()
+    if existing:
+        existing.role = role_name
+        flash(f"{user.name}'s role was updated.", "success")
+    else:
+        db.session.add(ClubRole(club_id=club.id, user_id=user.id, role=role_name, invited_by_id=current_user.id))
+        flash(f"{user.name} can now help manage {club.name}.", "success")
+    db.session.commit()
+
+    send_email(
+        user.email,
+        f"You were added as an officer for {club.name}",
+        f"Hi {user.name},\n\n{current_user.name} added you as {role_name} for {club.name} on Eventully.",
+    )
+    return redirect(url_for("officer.dashboard"))
+
+
+@bp.route("/club/<int:club_id>/team/<int:role_id>/remove", methods=["POST"])
+@login_required
+@owns_club
+def remove_team_member(club, role_id):
+    if club.officer_id != current_user.id:
+        abort(403)
+    role = ClubRole.query.filter_by(id=role_id, club_id=club.id).first_or_404()
+    name = role.user.name
+    db.session.delete(role)
+    db.session.commit()
+    flash(f"{name} was removed from {club.name}'s officer team.", "info")
+    return redirect(url_for("officer.dashboard"))

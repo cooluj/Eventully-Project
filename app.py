@@ -25,6 +25,7 @@ def create_app(config_class=Config):
     from blueprints.main import bp as main_bp
     from blueprints.clubs import bp as clubs_bp
     from blueprints.events import bp as events_bp
+    from blueprints.messages import bp as messages_bp
     from blueprints.officer import bp as officer_bp
     from blueprints.admin import bp as admin_bp
 
@@ -32,6 +33,7 @@ def create_app(config_class=Config):
     app.register_blueprint(main_bp)
     app.register_blueprint(clubs_bp)
     app.register_blueprint(events_bp)
+    app.register_blueprint(messages_bp)
     app.register_blueprint(officer_bp)
     app.register_blueprint(admin_bp)
 
@@ -49,6 +51,13 @@ def create_app(config_class=Config):
             return f"{days} days ago"
         months = days // 30
         return f"{months} month{'s' if months > 1 else ''} ago"
+
+    @app.template_filter("short_datetime")
+    def short_datetime(dt):
+        if not dt:
+            return ""
+        text = dt.strftime("%b %d, %I:%M %p")
+        return text.replace(" 0", " ").replace(", 0", ", ")
 
     @app.context_processor
     def inject_admin_flag():

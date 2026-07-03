@@ -11,8 +11,9 @@ This is a full rebuild of the original class project into a real, deployable app
 - **Real accounts** — email + hashed password (Flask-Login + Werkzeug), not just an email field
 - **Persistent database** (SQLite by default, swaps to Postgres by setting one env var) — nothing resets when the server restarts
 - **Club officer claiming** — any user can request to claim an unclaimed club; a site admin reviews and approves the request before handing over the listing
-- **Officer tools** — claimed clubs can edit their description and post real events; students RSVP with live capacity tracking
-- **A from-scratch, distinctive UI** — a "campus directory" visual language (catalog stamps, ticket-stub event cards, a route-map hero) instead of a generic template look
+- **Officer tools** — claimed clubs can edit their description, invite co-officers, post events, manage RSVPs, and message club members
+- **Account recovery** — email verification and password reset links are supported through SMTP-backed transactional email
+- **A polished product UI** — dark launch surfaces, app-style dashboards, event capacity bars, and split-pane club messaging
 - **Production-ready config** — gunicorn, a Procfile, environment-based secrets, error pages
 
 ## Project structure
@@ -27,11 +28,12 @@ eventully/
 ├── seed.py                    # Loads clubs_categorized.csv + demo data
 ├── utils.py                   # Calendar link helper, weekday list
 ├── blueprints/
-│   ├── auth.py                 # register / login / logout
+│   ├── auth.py                 # register / login / logout / verification / password reset
 │   ├── main.py                 # landing, onboarding, recommendations, dashboard
 │   ├── clubs.py                 # browse, detail, join/leave, claim
 │   ├── events.py                 # browse, detail, RSVP
-│   ├── officer.py                 # club editing, event CRUD (claimed-club owners only)
+│   ├── messages.py              # member/officer club threads
+│   ├── officer.py                 # club editing, team roles, event CRUD
 │   └── admin.py                    # claim approvals (ADMIN_EMAILS only)
 ├── templates/                       # 19 Jinja templates
 ├── static/css/style.css              # Full design system
@@ -66,7 +68,7 @@ That demo email is also the default site admin (see `ADMIN_EMAILS` below) — lo
 
 **Students:** register → answer 3 onboarding questions → get a ranked, scored list of clubs → join clubs and RSVP to events → everything persists across visits.
 
-**Club officers:** register like any student → find their club in the directory → submit a claim request with proof of their role → a site admin approves it → they get an "Officer" nav link to edit the club's description and post/manage events.
+**Club officers:** register like any student → verify email → find their club in the directory → submit a claim request with proof of their role → a site admin approves it → they can edit the listing, invite co-officers, message members, and post/manage events.
 
 **Admins:** anyone whose email is listed in `ADMIN_EMAILS` sees an Admin nav link and can approve or reject pending claims at `/admin/claims`.
 
@@ -84,13 +86,16 @@ Set these in `.env` locally, or in your host's dashboard when deploying:
 | `SECURE_COOKIES` | Set `true` in production (HTTPS) — marks session cookies Secure. | `false` |
 | `AUTO_SEED` | Create tables + load the club directory on boot. Makes fresh deploys work with zero shell access. | `true` |
 | `SEED_DEMO_ACCOUNT` | Seeds `demo@uw.edu`. **Set `false` in production** — its password is public. | `true` |
+| `EMAIL_VERIFICATION_REQUIRED` | When `true`, blocks unverified users from club claims and officer tools. Configure SMTP first. | `false` |
+| `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_USE_TLS` | SMTP settings for verification, reset, claim, team, and message notification emails. | disabled |
 
 ## Security
 
 - All forms are CSRF-protected (Flask-WTF); passwords are hashed with PBKDF2-SHA256.
 - Session/remember cookies are HttpOnly + SameSite=Lax, and Secure when `SECURE_COOKIES=true`.
 - Security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) on every response.
-- Officer routes verify club ownership; admin routes verify against `ADMIN_EMAILS`.
+- Officer routes verify club ownership or approved co-officer roles; admin routes verify against `ADMIN_EMAILS`.
+- Club messages are limited to members, officers, and admins. Senders, officers, and admins can remove messages from normal views.
 
 ## Tests
 
@@ -98,7 +103,7 @@ Set these in `.env` locally, or in your host's dashboard when deploying:
 .venv/bin/python -m pytest tests/
 ```
 
-Twelve end-to-end tests cover registration, login, onboarding + matching, join/leave, RSVP + capacity limits, the full claim → approve → officer lifecycle, permission walls, and CSRF rejection.
+The end-to-end suite covers registration, login, email verification, password reset, onboarding + matching, join/leave, RSVP + capacity limits, the full claim → approve → officer lifecycle, co-officer access, messages, permission walls, and CSRF rejection.
 
 ## Deploying it for real (one click)
 
@@ -107,16 +112,16 @@ The repo includes a **`render.yaml` Blueprint**. On [Render.com](https://render.
 1. Push this repo to GitHub.
 2. **New → Blueprint**, connect the repo. Render provisions the web service + a free Postgres database, generates `SECRET_KEY`, and wires everything automatically.
 3. When prompted, set `ADMIN_EMAILS` to **your** email — that's who approves club claims.
-4. First boot auto-creates tables and loads all 1,231 clubs (`AUTO_SEED`). Your app is live at the `.onrender.com` URL; add a custom domain in Settings if you want one.
+4. Configure SMTP env vars if you want verification/reset/notification email to send instead of logging.
+5. First boot auto-creates tables and loads all 1,231 clubs (`AUTO_SEED`). Your app is live at the `.onrender.com` URL; add a custom domain in Settings if you want one.
 
 Railway and Fly.io also work: add a Postgres add-on, set `DATABASE_URL` and the env vars above, start command `gunicorn app:app`.
 
 ## Notes for future work
 
-- **Email verification** isn't implemented — accounts are created immediately on registration. For a public launch, add a verification-link step so club claims are harder to fake.
-- **Password reset** isn't implemented yet.
-- **Officer claim proof** is currently just a free-text message reviewed by a human admin. At scale, verifying against a UW club registry export would remove the manual step.
+- **Officer claim proof** is currently human-reviewed free text plus admin notes. At scale, verifying against a UW club registry export would remove the manual step.
 - **Images** for events are just URLs right now — swapping in real upload storage (e.g. S3 or Cloudinary) would let officers upload photos directly.
+- **Email sending** requires SMTP environment variables. Without them, email bodies are logged for development.
 
 ---
 

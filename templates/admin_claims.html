@@ -20,13 +20,19 @@
           <span class="mono muted" style="font-size:0.78rem;">{{ claim.created_at.strftime('%b %d, %Y') }}</span>
         </div>
         <p>{{ claim.message }}</p>
+        <div class="field">
+          <label for="decision-note-{{ claim.id }}">Decision note</label>
+          <textarea id="decision-note-{{ claim.id }}" name="decision_note" rows="2" placeholder="Optional note sent to the requester and saved for audit."></textarea>
+        </div>
         <div class="pill-row">
-          <form method="POST" action="{{ url_for('admin.approve', claim_id=claim.id) }}">
+          <form method="POST" action="{{ url_for('admin.approve', claim_id=claim.id) }}" class="claim-decision-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="decision_note" value="">
             <button type="submit" class="btn btn-gold btn-sm">Approve</button>
           </form>
-          <form method="POST" action="{{ url_for('admin.reject', claim_id=claim.id) }}">
+          <form method="POST" action="{{ url_for('admin.reject', claim_id=claim.id) }}" class="claim-decision-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="decision_note" value="">
             <button type="submit" class="btn btn-brick btn-sm">Reject</button>
           </form>
         </div>
@@ -39,14 +45,20 @@
     <p class="muted">No decisions yet.</p>
   {% else %}
     <table class="data-table">
-      <tr><th>Club</th><th>Requester</th><th>Status</th><th>Decided</th></tr>
+      <tr><th>Club</th><th>Requester</th><th>Status</th><th>Reviewer</th><th>Decided</th></tr>
       {% for claim in recent %}
         <tr>
           <td>{{ claim.club.name }}</td>
           <td>{{ claim.requester.email }}</td>
           <td><span class="badge badge-{{ 'great' if claim.status == 'approved' else 'unclaimed' }}">{{ claim.status }}</span></td>
+          <td>{{ claim.reviewer.email if claim.reviewer else "—" }}</td>
           <td class="mono">{{ claim.decided_at.strftime('%b %d, %Y') if claim.decided_at }}</td>
         </tr>
+        {% if claim.decision_note %}
+          <tr>
+            <td colspan="5" class="muted">{{ claim.decision_note }}</td>
+          </tr>
+        {% endif %}
       {% endfor %}
     </table>
   {% endif %}
@@ -73,4 +85,14 @@
     </table>
   {% endif %}
 </section>
+<script>
+  document.querySelectorAll(".claim-decision-form").forEach(function (form) {
+    form.addEventListener("submit", function () {
+      var panel = form.closest(".panel");
+      var note = panel ? panel.querySelector("textarea[name='decision_note']") : null;
+      var hidden = form.querySelector("input[name='decision_note']");
+      if (note && hidden) hidden.value = note.value;
+    });
+  });
+</script>
 {% endblock %}

@@ -25,6 +25,9 @@
     <p class="muted" style="text-align:center; margin-top:18px; font-size:0.88rem;">
       New here? <a href="{{ url_for('auth.register') }}" style="color:var(--purple); font-weight:600;">Create an account</a>
     </p>
+    <p class="muted" style="text-align:center; margin-top:8px; font-size:0.82rem;">
+      <a href="{{ url_for('auth.forgot_password') }}" style="color:var(--purple); font-weight:700;">Forgot your password?</a>
+    </p>
     {% if show_demo_login %}
       <p class="muted mono" style="text-align:center; margin-top:8px; font-size:0.76rem;">
         Just browsing? demo@uw.edu / demopass123
