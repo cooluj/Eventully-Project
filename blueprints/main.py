@@ -4,6 +4,7 @@ from sqlalchemy import func
 
 from extensions import db
 from matching import MAJORS, smart_match_clubs
+from utils import WEEKDAY_ORDER
 from models import Club, Event, Membership, UserPreference
 
 bp = Blueprint("main", __name__)
@@ -59,7 +60,16 @@ def onboarding():
         return redirect(url_for("main.recommendations"))
 
     categories = [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
-    return render_template("onboarding.html", categories=categories, majors=MAJORS)
+    prefs = current_user.preferences
+    selected = set(prefs.category_list()) if prefs else set()
+    return render_template(
+        "onboarding.html",
+        categories=categories,
+        majors=MAJORS,
+        selected_categories=selected,
+        current_major=prefs.major if prefs else "",
+        current_commitment=prefs.time_commitment if prefs else "",
+    )
 
 
 @bp.route("/recommendations")
@@ -96,22 +106,51 @@ def dashboard():
     user_clubs = [m.club for m in memberships]
     user_club_ids = {c.id for c in user_clubs}
 
-    visible_events = (
-        Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
-        .order_by(Event.weekday)
-        .limit(6)
-        .all()
+    # Events the user has RSVP'd to, soonest weekday first
+    my_events = sorted(
+        (r.event for r in current_user.rsvps),
+        key=lambda e: (WEEKDAY_ORDER.get(e.weekday, 7), e.time),
     )
+
+    # Events from the user's clubs they haven't RSVP'd to yet
+    rsvp_ids = {r.event_id for r in current_user.rsvps}
+    club_events = (
+        Event.query.filter(Event.club_id.in_(user_club_ids), ~Event.id.in_(rsvp_ids))
+        .limit(3).all()
+    ) if user_club_ids else []
+
+    # A taste of the matcher: top 3 unjoined matches
+    suggestions = []
+    if current_user.preferences:
+        all_matches = smart_match_clubs(
+            Club.query.all(),
+            current_user.preferences.category_list(),
+            current_user.preferences.major,
+            current_user.preferences.time_commitment,
+        )
+        suggestions = [m for m in all_matches if m["club"].id not in user_club_ids][:3]
 
     stats = {
         "clubs_joined": len(user_clubs),
-        "events_upcoming": Event.query.filter(
-            db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids))
-        ).count(),
+        "events_rsvpd": len(my_events),
         "total_available": Club.query.count(),
         "officer_of": len(current_user.officer_of),
     }
 
     return render_template(
-        "dashboard.html", clubs=user_clubs[:6], events=visible_events, stats=stats
+        "dashboard.html",
+        clubs=user_clubs[:6],
+        my_events=my_events[:6],
+        club_events=club_events,
+        suggestions=suggestions,
+        stats=stats,
     )
+
+
+@bp.route("/about")
+def about():
+    stats = {
+        "total_clubs": Club.query.count(),
+        "total_events": Event.query.count(),
+    }
+    return render_template("about.html", stats=stats)

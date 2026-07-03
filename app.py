@@ -91,11 +91,39 @@ def bootstrap_database(app):
     """
     with app.app_context():
         db.create_all()
+        try:
+            add_missing_columns(app)
+        except Exception:
+            app.logger.exception("Column migration failed; continuing.")
         from seed import seed_clubs
         try:
             seed_clubs()
         except Exception:
             app.logger.exception("Database seeding failed; continuing with what exists.")
+
+
+def add_missing_columns(app):
+    """Minimal forward-only migration: ALTER TABLE ADD COLUMN for any model
+    column that doesn't exist yet. Handles simple additive schema changes on
+    live SQLite/Postgres databases without a full migration tool.
+    """
+    inspector = db.inspect(db.engine)
+    for table in db.metadata.sorted_tables:
+        if not inspector.has_table(table.name):
+            continue
+        existing = {c["name"] for c in inspector.get_columns(table.name)}
+        for column in table.columns:
+            if column.name in existing:
+                continue
+            ddl = f'ALTER TABLE "{table.name}" ADD COLUMN {column.name} {column.type.compile(db.engine.dialect)}'
+            if column.default is not None and getattr(column.default, "arg", None) is not None \
+                    and not callable(column.default.arg):
+                default = column.default.arg
+                default = f"'{default}'" if isinstance(default, str) else default
+                ddl += f" DEFAULT {default}"
+            with db.engine.begin() as conn:
+                conn.execute(db.text(ddl))
+            app.logger.info("Added column %s.%s", table.name, column.name)
 
 
 app = create_app()

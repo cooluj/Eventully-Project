@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+
+{% block content %}
+<section class="section container" style="max-width:720px;">
+  <span class="eyebrow">No. 000 — Colophon</span>
+  <h1 style="margin-top:10px;">Why <span class="accent-i">Eventully</span> exists</h1>
+
+  <p style="font-size:1.1rem; margin-top:20px;">
+    UW has {{ stats.total_clubs }} registered student organizations. That's the good news.
+    The bad news is that finding <em>yours</em> means scrolling an alphabetical list
+    longer than a CSE lecture. Most students give up somewhere around the D's.
+  </p>
+  <p style="font-size:1.1rem;">
+    Eventully asks you three questions — what you're into, what you study, and how much
+    time you actually have — then scores every club in the directory against your answers.
+    You get a ranked shortlist with the reasoning shown, not a black box.
+  </p>
+
+  <div class="divider"></div>
+
+  <h2 style="font-size:1.5rem;">For club officers</h2>
+  <p>
+    Every registered UW club already has a page here. If you run one, claim it:
+    you'll be able to rewrite your description, add your links and meeting times, and
+    post events that students can RSVP to — with live capacity counts, a
+    calendar-export button, and an attendee list only you can see.
+    Claims are reviewed by hand to keep listings legitimate.
+  </p>
+  <a href="{{ url_for('auth.register') }}" class="btn btn-gold" style="margin:8px 0 24px;">Claim your club</a>
+
+  <div class="divider"></div>
+
+  <h2 style="font-size:1.5rem;">The fine print</h2>
+  <ul class="muted" style="line-height:1.9;">
+    <li>Registration requires a <span class="mono">.edu</span> email address.</li>
+    <li>The directory is built from UW's public list of registered student organizations.</li>
+    <li>Eventully is an independent student project — not officially affiliated with the University of Washington.</li>
+    <li>Something wrong with a listing? A claim to dispute? Reach out and we'll fix it.</li>
+  </ul>
+
+  <div class="panel panel-dashed" style="margin-top:32px; display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
+    <div>
+      <span class="eyebrow">Right now</span>
+      <p style="margin:8px 0 0; font-family:var(--font-display); font-size:1.3rem; color:var(--purple-deep);">
+        {{ stats.total_clubs }} clubs · {{ stats.total_events }} live events
+      </p>
+    </div>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Find your people</a>
+  </div>
+</section>
+{% endblock %}

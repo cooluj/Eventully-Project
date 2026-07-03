@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Not allowed{% endblock %}
 {% block content %}
-<section class="section container">
-  <div class="empty-state panel">
-    <span class="eyebrow">Error 403</span>
-    <h3>You don't have access to this page</h3>
-    <p>This area is limited to the club's officer or site admins.</p>
-    <a href="{{ url_for('main.dashboard') }}" class="btn btn-gold">Back to dashboard</a>
+<section class="section container" style="max-width:640px; text-align:center;">
+  <div class="error-code" aria-hidden="true">403</div>
+  <span class="eyebrow" style="justify-content:center;">Restricted stacks</span>
+  <h2 style="margin-top:10px;">You don't have access to that</h2>
+  <p class="muted">This page belongs to a club officer or a site admin. If that's supposed
+    to be you, make sure you're logged into the right account.</p>
+  <div class="hero-actions" style="justify-content:center;">
+    <a href="{{ url_for('main.index') }}" class="btn btn-gold">Back to Eventully</a>
   </div>
 </section>
 {% endblock %}

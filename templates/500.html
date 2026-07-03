@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Something broke{% endblock %}
 {% block content %}
-<section class="section container">
-  <div class="empty-state panel">
-    <span class="eyebrow">Error 500</span>
-    <h3>Something went wrong on our end</h3>
-    <p>Try again in a moment. If it keeps happening, let us know.</p>
+<section class="section container" style="max-width:640px; text-align:center;">
+  <div class="error-code" aria-hidden="true">500</div>
+  <span class="eyebrow" style="justify-content:center;">Paper jam</span>
+  <h2 style="margin-top:10px;">Something broke on our end</h2>
+  <p class="muted">Not you — us. Try that again in a moment; if it keeps happening,
+    it's already on the fix-it list.</p>
+  <div class="hero-actions" style="justify-content:center;">
     <a href="{{ url_for('main.index') }}" class="btn btn-gold">Back to Eventully</a>
   </div>
 </section>

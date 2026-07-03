@@ -1,10 +1,45 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
-from flask_login import login_required, login_user, logout_user
+from flask_login import current_user, login_required, login_user, logout_user
 
 from extensions import db
 from models import User
 
 bp = Blueprint("auth", __name__)
+
+
+@bp.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    if request.method == "POST":
+        form = request.form.get("form")
+
+        if form == "profile":
+            name = request.form.get("name", "").strip()
+            if not name:
+                flash("Your name can't be empty.", "error")
+            else:
+                current_user.name = name
+                db.session.commit()
+                flash("Profile updated.", "success")
+
+        elif form == "password":
+            current = request.form.get("current_password", "")
+            new = request.form.get("new_password", "")
+            confirm = request.form.get("confirm_password", "")
+            if not current_user.check_password(current):
+                flash("Your current password is incorrect.", "error")
+            elif len(new) < 8:
+                flash("New password must be at least 8 characters.", "error")
+            elif new != confirm:
+                flash("New passwords don't match.", "error")
+            else:
+                current_user.set_password(new)
+                db.session.commit()
+                flash("Password changed.", "success")
+
+        return redirect(url_for("auth.settings"))
+
+    return render_template("settings.html")
 
 
 @bp.route("/register", methods=["GET", "POST"])

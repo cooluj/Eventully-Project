@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Not found{% endblock %}
 {% block content %}
-<section class="section container">
-  <div class="empty-state panel">
-    <span class="eyebrow">Error 404</span>
-    <h3>That page isn't in the directory</h3>
-    <p>The club, event, or page you're looking for doesn't exist or was moved.</p>
+<section class="section container" style="max-width:640px; text-align:center;">
+  <div class="error-code" aria-hidden="true">404</div>
+  <span class="eyebrow" style="justify-content:center;">Card missing from catalog</span>
+  <h2 style="margin-top:10px;">This page isn't in the directory</h2>
+  <p class="muted">The club, event, or page you're after doesn't exist, was moved, or was
+    filed under the wrong drawer. It happens to the best of catalogs.</p>
+  <div class="hero-actions" style="justify-content:center;">
     <a href="{{ url_for('main.index') }}" class="btn btn-gold">Back to Eventully</a>
+    <a href="{{ url_for('clubs.browse') }}" class="btn btn-outline">Browse clubs</a>
   </div>
 </section>
 {% endblock %}

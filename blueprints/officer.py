@@ -33,6 +33,10 @@ def dashboard():
 def edit_club(club):
     if request.method == "POST":
         club.description = request.form.get("description", "").strip()
+        club.website = request.form.get("website", "").strip()
+        club.instagram = request.form.get("instagram", "").strip().lstrip("@")
+        club.contact_email = request.form.get("contact_email", "").strip()
+        club.meeting_info = request.form.get("meeting_info", "").strip()
         db.session.commit()
         flash(f"{club.name}'s listing has been updated.", "success")
         return redirect(url_for("officer.dashboard"))
@@ -101,3 +105,13 @@ def delete_event(event_id):
     db.session.commit()
     flash(f"{name} has been removed.", "info")
     return redirect(url_for("officer.dashboard"))
+
+
+@bp.route("/event/<int:event_id>/attendees")
+@login_required
+def attendees(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.club.officer_id != current_user.id:
+        abort(403)
+    rsvps = sorted(event.rsvps, key=lambda r: r.created_at)
+    return render_template("event_attendees.html", event=event, rsvps=rsvps)

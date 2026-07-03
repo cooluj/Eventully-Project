@@ -48,6 +48,12 @@ class Club(db.Model):
     description = db.Column(db.Text, default="")
     category = db.Column(db.String(80), index=True)
 
+    # Officer-editable listing details
+    website = db.Column(db.String(300), default="")
+    instagram = db.Column(db.String(100), default="")
+    contact_email = db.Column(db.String(255), default="")
+    meeting_info = db.Column(db.String(200), default="")  # e.g. "Tuesdays 6pm, HUB 145"
+
     officer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     claimed_at = db.Column(db.DateTime, nullable=True)
 

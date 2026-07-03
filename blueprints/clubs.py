@@ -15,15 +15,29 @@ def browse():
     page = int(request.args.get("page", 0))
     per_page = current_app.config["CLUBS_PER_PAGE"]
 
+    status = request.args.get("status", "all")
+    sort = request.args.get("sort", "name")
+
     query = Club.query
     if category != "all":
         query = query.filter_by(category=category)
+    if status == "claimed":
+        query = query.filter(Club.officer_id.isnot(None))
+    elif status == "unclaimed":
+        query = query.filter(Club.officer_id.is_(None))
     if search:
         like = f"%{search}%"
         query = query.filter(db.or_(Club.name.ilike(like), Club.description.ilike(like)))
 
     total = query.count()
-    clubs_list = query.order_by(Club.name).offset(page * per_page).limit(per_page).all()
+    if sort == "members":
+        from sqlalchemy import func
+        from models import Membership as M
+        query = (query.outerjoin(M).group_by(Club.id)
+                 .order_by(func.count(M.id).desc(), Club.name))
+    else:
+        query = query.order_by(Club.name)
+    clubs_list = query.offset(page * per_page).limit(per_page).all()
     has_more = (page + 1) * per_page < total
 
     categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
@@ -34,6 +48,8 @@ def browse():
         clubs=clubs_list,
         categories=categories,
         current_category=category,
+        current_status=status,
+        current_sort=sort,
         search_query=search,
         result_count=total,
         current_page=page,

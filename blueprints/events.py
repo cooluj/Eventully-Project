@@ -1,9 +1,9 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
 from models import RSVP, Club, Event
-from utils import WEEKDAYS, build_calendar_link
+from utils import WEEKDAYS, build_calendar_link, build_ics
 
 bp = Blueprint("events", __name__)
 
@@ -67,3 +67,14 @@ def rsvp(event_id):
         db.session.commit()
         flash(f"You're on the list for {event.name}!", "success")
     return redirect(url_for("events.detail", event_id=event.id))
+
+
+@bp.route("/event/<int:event_id>/calendar.ics")
+@login_required
+def ics(event_id):
+    event = Event.query.get_or_404(event_id)
+    return Response(
+        build_ics(event),
+        mimetype="text/calendar",
+        headers={"Content-Disposition": f"attachment; filename=eventully-{event.id}.ics"},
+    )

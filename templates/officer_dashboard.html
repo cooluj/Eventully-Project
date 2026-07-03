@@ -21,7 +21,7 @@
             <h3 style="margin:4px 0 0;">{{ club.name }}</h3>
           </div>
           <div class="pill-row">
-            <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-ghost btn-sm">Edit description</a>
+            <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-ghost btn-sm">Edit listing</a>
             <a href="{{ url_for('officer.new_event', club_id=club.id) }}" class="btn btn-gold btn-sm">Post an event</a>
           </div>
         </div>
@@ -35,8 +35,9 @@
               <tr>
                 <td>{{ event.name }}</td>
                 <td>{{ event.weekday }}, {{ event.time }}</td>
-                <td>{{ event.attendee_count }}/{{ event.capacity }}</td>
+                <td><a href="{{ url_for('officer.attendees', event_id=event.id) }}" style="color:var(--purple); font-weight:600;">{{ event.attendee_count }}/{{ event.capacity }}</a></td>
                 <td class="pill-row">
+                  <a href="{{ url_for('officer.attendees', event_id=event.id) }}" class="btn btn-ghost btn-sm">Attendees</a>
                   <a href="{{ url_for('officer.edit_event', event_id=event.id) }}" class="btn btn-ghost btn-sm">Edit</a>
                   <form method="POST" action="{{ url_for('officer.delete_event', event_id=event.id) }}" onsubmit="return confirm('Delete this event?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

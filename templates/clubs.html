@@ -15,9 +15,18 @@
     </form>
   </div>
 
-  <div class="category-strip" style="margin-bottom:28px;">
+  <div class="category-strip" style="margin-bottom:12px;">
     {% for cat in categories %}
-      <a class="chip {{ 'active' if cat == current_category }}" href="{{ url_for('clubs.browse', category=cat, search=search_query) }}">{{ cat }}</a>
+      <a class="chip {{ 'active' if cat == current_category }}" href="{{ url_for('clubs.browse', category=cat, search=search_query, status=current_status, sort=current_sort) }}">{{ cat }}</a>
+    {% endfor %}
+  </div>
+  <div class="category-strip" style="margin-bottom:28px;">
+    {% for s, label in [('all', 'Any status'), ('claimed', 'Officer active'), ('unclaimed', 'Unclaimed')] %}
+      <a class="chip {{ 'active' if s == current_status }}" href="{{ url_for('clubs.browse', category=current_category, search=search_query, status=s, sort=current_sort) }}">{{ label }}</a>
+    {% endfor %}
+    <span style="width:12px;"></span>
+    {% for s, label in [('name', 'A–Z'), ('members', 'Most members')] %}
+      <a class="chip {{ 'active' if s == current_sort }}" href="{{ url_for('clubs.browse', category=current_category, search=search_query, status=current_status, sort=s) }}">{{ label }}</a>
     {% endfor %}
   </div>
 

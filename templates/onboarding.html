@@ -15,7 +15,7 @@
       <div class="category-grid" style="margin-top:8px;">
         {% for cat in categories %}
           <div class="category-check">
-            <input type="checkbox" id="cat-{{ loop.index }}" name="categories" value="{{ cat }}">
+            <input type="checkbox" id="cat-{{ loop.index }}" name="categories" value="{{ cat }}" {{ 'checked' if cat in selected_categories }}>
             <label for="cat-{{ loop.index }}">{{ cat }}</label>
           </div>
         {% endfor %}
@@ -27,7 +27,7 @@
       <select id="major" name="major">
         <option value="">Prefer not to say</option>
         {% for m in majors %}
-          <option value="{{ m }}">{{ m }}</option>
+          <option value="{{ m }}" {{ 'selected' if m == current_major }}>{{ m }}</option>
         {% endfor %}
       </select>
     </div>
@@ -36,15 +36,15 @@
       <label>How much time can you commit?</label>
       <div class="radio-cards">
         <div class="radio-card">
-          <input type="radio" id="low" name="time_commitment" value="low">
+          <input type="radio" id="low" name="time_commitment" value="low" {{ 'checked' if current_commitment == 'low' }}>
           <label for="low">Low key<br><span class="muted" style="font-weight:400; font-size:0.78rem;">drop in when I can</span></label>
         </div>
         <div class="radio-card">
-          <input type="radio" id="medium" name="time_commitment" value="medium">
+          <input type="radio" id="medium" name="time_commitment" value="medium" {{ 'checked' if current_commitment == 'medium' }}>
           <label for="medium">Regular<br><span class="muted" style="font-weight:400; font-size:0.78rem;">weekly meetings</span></label>
         </div>
         <div class="radio-card">
-          <input type="radio" id="high" name="time_commitment" value="high">
+          <input type="radio" id="high" name="time_commitment" value="high" {{ 'checked' if current_commitment == 'high' }}>
           <label for="high">All in<br><span class="muted" style="font-weight:400; font-size:0.78rem;">competitive / team</span></label>
         </div>
       </div>

@@ -29,7 +29,8 @@
           {% if is_rsvpd %}Cancel RSVP{% elif event.attendee_count >= event.capacity %}Event full{% else %}RSVP{% endif %}
         </button>
       </form>
-      <a href="{{ calendar_link }}" target="_blank" rel="noopener" class="btn btn-outline">Add to Google Calendar</a>
+      <a href="{{ calendar_link }}" target="_blank" rel="noopener" class="btn btn-outline">Google Calendar</a>
+      <a href="{{ url_for('events.ics', event_id=event.id) }}" class="btn btn-ghost">Download .ics</a>
     </div>
   </div>
 </section>

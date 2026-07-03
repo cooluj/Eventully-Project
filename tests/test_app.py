@@ -227,3 +227,115 @@ def test_post_without_csrf_token_is_rejected(client):
     assert resp.status_code == 302  # bounced by the CSRF handler, no membership created
     with client.application.app_context():
         assert Membership.query.count() == 0
+
+
+# ---------- settings ----------
+
+def test_settings_update_profile_and_password(client):
+    register(client)
+    resp = post(client, "/settings", "/settings", form="profile", name="Renamed Student")
+    assert "Profile updated" in resp.get_data(as_text=True)
+
+    resp = post(client, "/settings", "/settings", form="password",
+                current_password="wrongpass", new_password="newpass12345",
+                confirm_password="newpass12345")
+    assert "current password is incorrect" in resp.get_data(as_text=True)
+
+    resp = post(client, "/settings", "/settings", form="password",
+                current_password="testpass123", new_password="newpass12345",
+                confirm_password="newpass12345")
+    assert "Password changed" in resp.get_data(as_text=True)
+
+    client.get("/logout")
+    resp = login(client, "student@uw.edu", password="newpass12345")
+    assert "Welcome back, Renamed" in resp.get_data(as_text=True)
+
+
+def test_onboarding_prefills_existing_preferences(client):
+    register(client)
+    post(client, "/onboarding", "/onboarding",
+         categories="Technology", major="Computer Science", time_commitment="medium")
+    html = client.get("/onboarding").get_data(as_text=True)
+    assert 'value="Technology" checked' in html
+    assert 'value="Computer Science" selected' in html
+    assert 'value="medium" checked' in html
+
+
+# ---------- about + ics ----------
+
+def test_about_page(client):
+    resp = client.get("/about")
+    assert resp.status_code == 200
+    assert "Eventully" in resp.get_data(as_text=True)
+
+
+def test_ics_download(client, app):
+    event_id = make_event(app)
+    register(client)
+    resp = client.get(f"/event/{event_id}/calendar.ics")
+    assert resp.status_code == 200
+    assert resp.mimetype == "text/calendar"
+    body = resp.get_data(as_text=True)
+    assert "RRULE:FREQ=WEEKLY" in body
+    assert "Test Meetup" in body
+
+
+# ---------- attendees ----------
+
+def test_officer_sees_attendees_others_403(client, app):
+    event_id = make_event(app)
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+
+    register(client, email="guest@uw.edu", name="Guest Student")
+    post(client, f"/event/{event_id}/rsvp", f"/event/{event_id}")
+    assert client.get(f"/officer/event/{event_id}/attendees").status_code == 403
+    client.get("/logout")
+
+    login(client, "owner@uw.edu")
+    html = client.get(f"/officer/event/{event_id}/attendees").get_data(as_text=True)
+    assert "Guest Student" in html
+    assert "guest@uw.edu" in html
+
+
+# ---------- club browse filters + officer listing fields ----------
+
+def test_clubs_status_filter(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+
+    register(client)
+    html = client.get("/clubs?status=claimed").get_data(as_text=True)
+    assert "Robotics Club" in html and "Chess Society" not in html
+    html = client.get("/clubs?status=unclaimed").get_data(as_text=True)
+    assert "Robotics Club" not in html and "Chess Society" in html
+
+
+def test_officer_edits_listing_fields_shown_on_detail(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+
+    login(client, "owner@uw.edu")
+    post(client, "/officer/club/1/edit", "/officer/club/1/edit",
+         description="We build robots.", meeting_info="Tuesdays 6pm, HUB 145",
+         website="https://robots.uw.edu", instagram="@uwrobots",
+         contact_email="robots@uw.edu")
+    html = client.get("/club/1").get_data(as_text=True)
+    assert "Tuesdays 6pm, HUB 145" in html
+    assert "@uwrobots" in html  # handle stored without the @, rendered with it
+    assert "robots@uw.edu" in html

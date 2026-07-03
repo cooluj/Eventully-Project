@@ -23,6 +23,15 @@
 
     <p style="font-size:1.05rem;">{{ club.description or "No description yet." }}</p>
 
+    {% if club.meeting_info or club.website or club.instagram or club.contact_email %}
+      <table class="data-table" style="margin:20px 0; max-width:560px;">
+        {% if club.meeting_info %}<tr><th>Meets</th><td>{{ club.meeting_info }}</td></tr>{% endif %}
+        {% if club.website %}<tr><th>Website</th><td><a href="{{ club.website }}" target="_blank" rel="noopener" style="color:var(--purple); font-weight:600;">{{ club.website|replace("https://","")|replace("http://","")|truncate(40) }}</a></td></tr>{% endif %}
+        {% if club.instagram %}<tr><th>Instagram</th><td><a href="https://instagram.com/{{ club.instagram }}" target="_blank" rel="noopener" style="color:var(--purple); font-weight:600;">@{{ club.instagram }}</a></td></tr>{% endif %}
+        {% if club.contact_email %}<tr><th>Contact</th><td><a href="mailto:{{ club.contact_email }}" style="color:var(--purple); font-weight:600;">{{ club.contact_email }}</a></td></tr>{% endif %}
+      </table>
+    {% endif %}
+
     <div class="hero-actions" style="margin-top:24px;">
       {% if is_member %}
         <form method="POST" action="{{ url_for('clubs.leave', club_id=club.id) }}">

@@ -777,6 +777,67 @@ table.data-table tr:hover td { background: rgba(75, 46, 131, 0.03); }
   color: rgba(246, 239, 221, 0.55);
 }
 
+/* -------------------- accessibility: skip link -------------------- */
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--gold);
+  color: var(--purple-deep);
+  font-weight: 700;
+  padding: 10px 18px;
+  border: 2px solid var(--purple);
+  border-radius: var(--radius);
+}
+.skip-link:focus { left: 12px; top: 12px; }
+
+/* -------------------- error pages -------------------- */
+
+.error-code {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(6rem, 16vw, 10rem);
+  line-height: 1;
+  color: var(--purple);
+  opacity: 0.14;
+  margin-top: 20px;
+  user-select: none;
+}
+
+/* -------------------- flash dismissal -------------------- */
+
+.flash { position: relative; padding-right: 44px; transition: opacity 0.3s ease, transform 0.3s ease; }
+.flash-close {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 6px 8px;
+}
+.flash-close:hover { opacity: 1; }
+.flash-out { opacity: 0; transform: translateY(-6px); }
+
+/* -------------------- entrance animation -------------------- */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.club-grid > *, .event-grid > * { animation: rise-in 0.35s ease both; }
+.club-grid > *:nth-child(2), .event-grid > *:nth-child(2) { animation-delay: 0.05s; }
+.club-grid > *:nth-child(3), .event-grid > *:nth-child(3) { animation-delay: 0.1s; }
+.club-grid > *:nth-child(n+4), .event-grid > *:nth-child(n+4) { animation-delay: 0.15s; }
+
 /* -------------------- reduced motion -------------------- */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; animation: none !important; }
