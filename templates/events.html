@@ -3,24 +3,39 @@
 {% block title %}Events{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <div class="section-head">
+<section class="app-page container">
+  <div class="page-hero">
     <div>
       <span class="eyebrow">{{ events|length }} events</span>
-      <h2 style="margin:4px 0 0;">Open events this week</h2>
+      <h1>Find your next campus moment</h1>
+      <p>Scan public socials, members-only workshops, and the events you already saved to your week.</p>
     </div>
-    <a href="{{ url_for('main.calendar') }}" class="view-all">Calendar view →</a>
+    <a href="{{ url_for('main.calendar') }}" class="btn btn-ghost">Calendar view</a>
   </div>
 
-  <div class="category-strip" style="margin-bottom:10px;">
-    {% for cat in categories %}
-      <a class="chip {{ 'active' if cat == current_category }}" href="{{ url_for('events.browse', category=cat, day=current_day) }}">{{ cat }}</a>
+  <nav class="event-tabs" aria-label="Event views">
+    {% for value, label in scopes %}
+      <a class="{{ 'active' if value == current_scope }}" href="{{ url_for('events.browse', scope=value, category=current_category, day=current_day) }}">{{ label }}</a>
     {% endfor %}
-  </div>
-  <div class="category-strip" style="margin-bottom:28px;">
-    {% for d in days %}
-      <a class="chip {{ 'active' if d == current_day }}" href="{{ url_for('events.browse', category=current_category, day=d) }}">{{ d }}</a>
-    {% endfor %}
+  </nav>
+
+  <div class="filter-panel">
+    <div class="filter-row">
+      <span class="filter-label">Category</span>
+      <div class="category-strip">
+        {% for cat in categories %}
+          <a class="chip {{ 'active' if cat == current_category }}" href="{{ url_for('events.browse', scope=current_scope, category=cat, day=current_day) }}">{{ cat }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="filter-row compact">
+      <span class="filter-label">Day</span>
+      <div class="category-strip">
+        {% for d in days %}
+          <a class="chip {{ 'active' if d == current_day }}" href="{{ url_for('events.browse', scope=current_scope, category=current_category, day=d) }}">{{ d }}</a>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 
   {% if not events %}

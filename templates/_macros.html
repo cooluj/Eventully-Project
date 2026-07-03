@@ -74,14 +74,30 @@
       </div>
     {% endif %}
 
+    {% if match and match.reasons %}
+      <div class="match-reasons" aria-label="Why this club matches">
+        {% for reason in match.reasons[:3] %}
+          <span>{{ reason }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <a href="{{ url_for('clubs.detail', club_id=club.id) }}" class="btn btn-block btn-sm">View Club →</a>
   </div>
 {% endmacro %}
 
 {% macro event_card(event, rsvp_ids=None) %}
   <a class="ticket" href="{{ url_for('events.detail', event_id=event.id) }}">
-    {% if event.image_url %}<div class="ticket-img" style="background-image:url('{{ event.image_url }}')"></div>{% endif %}
+    {% if event.image_url %}
+      <div class="ticket-img" style="background-image:url('{{ event.image_url }}')">
+        <span class="ticket-scope">{{ "Public" if event.is_public else "Members" }}</span>
+      </div>
+    {% endif %}
     <div class="ticket-body">
+      <div class="ticket-topline">
+        <span class="ticket-kicker">{{ event.club.category }}</span>
+        {% if not event.image_url %}<span class="ticket-scope inline">{{ "Public" if event.is_public else "Members" }}</span>{% endif %}
+      </div>
       <h3>{{ event.name }}</h3>
       <div class="icon-meta">
         <span>{{ icon("calendar") }} {{ event.weekday }}</span>
@@ -89,9 +105,20 @@
         <span>{{ icon("pin") }} {{ event.location }}</span>
       </div>
       <span class="ticket-meta">{{ event.club.name }}</span>
+      <div class="ticket-capacity" aria-label="{{ event.attendee_count }} of {{ event.capacity }} spots filled">
+        <div class="capacity-copy">
+          <span>{{ event.remaining_spots }} spot{{ 's' if event.remaining_spots != 1 }} left</span>
+          <strong>{{ event.capacity_percent }}%</strong>
+        </div>
+        <div class="capacity-track"><span style="width:{{ event.capacity_percent }}%"></span></div>
+      </div>
       <div class="ticket-perf">
         <span class="going">{{ event.attendee_count }}/{{ event.capacity }} going</span>
-        <span>{{ "You're in ✓" if rsvp_ids and event.id in rsvp_ids else "View details →" }}</span>
+        {% if rsvp_ids and event.id in rsvp_ids %}
+          <span class="ticket-status">You're in</span>
+        {% else %}
+          <span class="ticket-details">View details</span>
+        {% endif %}
       </div>
     </div>
   </a>

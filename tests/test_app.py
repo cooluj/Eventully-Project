@@ -2,8 +2,13 @@
 with CSRF protection enabled (tokens are pulled from the rendered forms,
 exactly like a browser would)."""
 import re
+import os
 
 import pytest
+
+os.environ["AUTO_SEED"] = "false"
+os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["SEED_DEMO_ACCOUNT"] = "false"
 
 from app import create_app
 from config import Config
@@ -99,6 +104,17 @@ def test_login_wrong_password(client):
     assert "Incorrect email or password" in resp.get_data(as_text=True)
 
 
+def test_login_rejects_external_next_url(client):
+    register(client)
+    client.get("/logout")
+    token = get_token(client, "/login?next=https://evil.example")
+    resp = client.post("/login?next=https://evil.example", data={
+        "csrf_token": token, "email": "student@uw.edu", "password": "testpass123",
+    })
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/dashboard"
+
+
 def test_protected_pages_redirect_anonymous(client):
     resp = client.get("/dashboard")
     assert resp.status_code == 302
@@ -159,6 +175,53 @@ def test_rsvp_capacity_enforced(client, app):
     assert "at capacity" in resp.get_data(as_text=True)
     with client.application.app_context():
         assert RSVP.query.count() == 1
+
+
+def test_private_event_direct_routes_require_membership(client, app):
+    event_id = make_event(app, public=False)
+    register(client, email="outsider@uw.edu")
+
+    assert client.get(f"/event/{event_id}").status_code == 403
+    assert client.get(f"/event/{event_id}/calendar.ics").status_code == 403
+
+    token = get_token(client, "/club/1")
+    resp = client.post(f"/event/{event_id}/rsvp", data={"csrf_token": token})
+    assert resp.status_code == 403
+    with client.application.app_context():
+        assert RSVP.query.count() == 0
+
+
+def test_private_event_member_can_view_and_rsvp(client, app):
+    event_id = make_event(app, public=False)
+    register(client)
+    post(client, "/club/1/join", "/club/1")
+    resp = post(client, f"/event/{event_id}/rsvp", f"/event/{event_id}")
+    assert "on the list" in resp.get_data(as_text=True)
+
+
+def test_event_scope_tabs_filter_visible_events(client, app):
+    with app.app_context():
+        public = Event(club_id=1, name="Public Workshop", is_public=True)
+        private = Event(club_id=1, name="Member Lab", is_public=False)
+        db.session.add_all([public, private])
+        db.session.commit()
+        public_id = public.id
+
+    register(client)
+    post(client, "/club/1/join", "/club/1")
+    post(client, f"/event/{public_id}/rsvp", f"/event/{public_id}")
+
+    html = client.get("/events?scope=public").get_data(as_text=True)
+    assert "Public Workshop" in html
+    assert "Member Lab" not in html
+
+    html = client.get("/events?scope=members").get_data(as_text=True)
+    assert "Member Lab" in html
+    assert "Public Workshop" not in html
+
+    html = client.get("/events?scope=rsvped").get_data(as_text=True)
+    assert "Public Workshop" in html
+    assert "Member Lab" not in html
 
 
 # ---------- claiming + officer + admin ----------

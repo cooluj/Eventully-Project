@@ -3,6 +3,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from extensions import db
 from models import User
+from utils import is_safe_next_url
 
 bp = Blueprint("auth", __name__)
 
@@ -44,6 +45,9 @@ def settings():
 
 @bp.route("/register", methods=["GET", "POST"])
 def register():
+    if current_user.is_authenticated:
+        return redirect(url_for("main.dashboard"))
+
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         name = request.form.get("name", "").strip()
@@ -83,6 +87,9 @@ def register():
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("main.dashboard"))
+
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
@@ -95,7 +102,9 @@ def login():
         login_user(user, remember=True)
         flash(f"Welcome back, {user.name.split(' ')[0]}!", "success")
         next_url = request.args.get("next")
-        return redirect(next_url or url_for("main.dashboard"))
+        if is_safe_next_url(next_url, request.host_url):
+            return redirect(next_url)
+        return redirect(url_for("main.dashboard"))
 
     return render_template("login.html", email="")
 

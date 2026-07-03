@@ -2,36 +2,70 @@
 {% block title %}{{ event.name }}{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <div style="max-width:700px;">
-    {% if event.image_url %}
-      <div class="ticket-img" style="height:220px; border-radius:3px; margin-bottom:20px; border:1px solid var(--line); background-image:url('{{ event.image_url }}')"></div>
-    {% endif %}
-
-    <span class="eyebrow">{{ event.club.category }}</span>
-    <h1 style="margin-top:8px;">{{ event.name }}</h1>
-    <p class="muted">Hosted by <a href="{{ url_for('clubs.detail', club_id=event.club.id) }}" style="color:var(--gold-dark); font-weight:600;">{{ event.club.name }}</a></p>
-
-    <table class="data-table" style="margin:20px 0;">
-      <tr><th>When</th><td>{{ event.weekday }}, {{ event.time }}</td></tr>
-      <tr><th>Where</th><td>{{ event.location }}</td></tr>
-      <tr><th>Capacity</th><td>{{ event.attendee_count }} / {{ event.capacity }} attending</td></tr>
-      <tr><th>Open to</th><td>{{ "Everyone" if event.is_public else "Club members only" }}</td></tr>
-    </table>
-
-    <p>{{ event.description }}</p>
-
-    <div class="hero-actions">
-      <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn {{ 'btn-outline' if is_rsvpd else 'btn-gold' }}"
-          {% if not is_rsvpd and event.attendee_count >= event.capacity %}disabled{% endif %}>
-          {% if is_rsvpd %}Cancel RSVP{% elif event.attendee_count >= event.capacity %}Event full{% else %}RSVP{% endif %}
-        </button>
-      </form>
-      <a href="{{ calendar_link }}" target="_blank" rel="noopener" class="btn btn-outline">Google Calendar</a>
-      <a href="{{ url_for('events.ics', event_id=event.id) }}" class="btn btn-ghost">Download .ics</a>
+<section class="event-show container">
+  <div class="event-show-hero">
+    <div class="event-show-copy">
+      <span class="make-kicker">{{ "Public event" if event.is_public else "Members only" }} · {{ event.club.category }}</span>
+      <h1>{{ event.name }}</h1>
+      <p>Hosted by <a href="{{ url_for('clubs.detail', club_id=event.club.id) }}">{{ event.club.name }}</a></p>
+      <div class="event-facts">
+        <span>{{ event.weekday }}, {{ event.time }}</span>
+        <span>{{ event.location }}</span>
+        <span>{{ event.remaining_spots }} spot{{ 's' if event.remaining_spots != 1 }} left</span>
+      </div>
     </div>
+    <div class="event-show-art" {% if event.image_url %}style="background-image:url('{{ event.image_url }}')"{% endif %}>
+      <span>{{ event.capacity_percent }}% full</span>
+    </div>
+  </div>
+
+  <div class="event-show-layout">
+    <article class="event-story panel">
+      <span class="eyebrow">About this event</span>
+      <p>{{ event.description or "The host has not added a full description yet. RSVP to keep it on your calendar, then check back for updates." }}</p>
+
+      <div class="detail-grid">
+        <div>
+          <span>When</span>
+          <strong>{{ event.weekday }}, {{ event.time }}</strong>
+        </div>
+        <div>
+          <span>Where</span>
+          <strong>{{ event.location }}</strong>
+        </div>
+        <div>
+          <span>Open to</span>
+          <strong>{{ "Everyone" if event.is_public else "Club members only" }}</strong>
+        </div>
+        <div>
+          <span>Hosted by</span>
+          <strong>{{ event.club.name }}</strong>
+        </div>
+      </div>
+    </article>
+
+    <aside class="event-rsvp-panel">
+      <div class="panel">
+        <span class="eyebrow">Reserve your spot</span>
+        <h2>{{ event.attendee_count }}/{{ event.capacity }} going</h2>
+        <div class="capacity-copy">
+          <span>{{ event.remaining_spots }} spot{{ 's' if event.remaining_spots != 1 }} left</span>
+          <strong>{{ event.capacity_percent }}%</strong>
+        </div>
+        <div class="capacity-track large"><span style="width:{{ event.capacity_percent }}%"></span></div>
+        <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-block {{ 'btn-outline' if is_rsvpd else 'btn-gold' }}"
+            {% if not is_rsvpd and event.attendee_count >= event.capacity %}disabled{% endif %}>
+            {% if is_rsvpd %}Cancel RSVP{% elif event.attendee_count >= event.capacity %}Event full{% else %}RSVP{% endif %}
+          </button>
+        </form>
+        <div class="event-save-actions">
+          <a href="{{ calendar_link }}" target="_blank" rel="noopener" class="btn btn-outline btn-block">Google Calendar</a>
+          <a href="{{ url_for('events.ics', event_id=event.id) }}" class="btn btn-ghost btn-block">Download .ics</a>
+        </div>
+      </div>
+    </aside>
   </div>
 </section>
 {% endblock %}
