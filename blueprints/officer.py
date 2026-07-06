@@ -1,4 +1,5 @@
 from functools import wraps
+from urllib.parse import urlparse
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -9,6 +10,29 @@ from notifications import send_email
 from utils import WEEKDAYS
 
 bp = Blueprint("officer", __name__, url_prefix="/officer")
+
+
+def _clean_website(raw):
+    """Return a safe http(s) URL, "" when blank, or None when rejected.
+
+    The value lands in an href, so anything other than http(s) (javascript:,
+    data:, ...) is stored XSS waiting to happen."""
+    url = raw.strip()
+    if not url:
+        return ""
+    scheme = urlparse(url).scheme.lower()
+    if scheme in ("http", "https"):
+        return url
+    if scheme:
+        return None
+    return "https://" + url
+
+
+def _parse_capacity(raw, fallback):
+    try:
+        return max(1, min(int(raw), 100000))
+    except (TypeError, ValueError):
+        return fallback
 
 
 def owns_club(view):
@@ -36,8 +60,12 @@ def dashboard():
 @owns_club
 def edit_club(club):
     if request.method == "POST":
+        website = _clean_website(request.form.get("website", ""))
+        if website is None:
+            flash("Website must be a normal http(s) link.", "error")
+            return render_template("club_edit.html", club=club)
         club.description = request.form.get("description", "").strip()
-        club.website = request.form.get("website", "").strip()
+        club.website = website
         club.instagram = request.form.get("instagram", "").strip().lstrip("@")
         club.contact_email = request.form.get("contact_email", "").strip()
         club.meeting_info = request.form.get("meeting_info", "").strip()
@@ -64,7 +92,7 @@ def new_event(club):
             time=request.form.get("time", "18:00"),
             location=request.form.get("location", "").strip() or "TBD",
             image_url=request.form.get("image_url", "").strip(),
-            capacity=int(request.form.get("capacity") or 50),
+            capacity=_parse_capacity(request.form.get("capacity"), 50),
             is_public=bool(request.form.get("is_public")),
             created_by=current_user.id,
         )
@@ -93,7 +121,7 @@ def edit_event(event_id):
         event.time = request.form.get("time", event.time)
         event.location = request.form.get("location", "").strip() or "TBD"
         event.image_url = request.form.get("image_url", "").strip()
-        event.capacity = int(request.form.get("capacity") or event.capacity)
+        event.capacity = _parse_capacity(request.form.get("capacity"), event.capacity)
         event.is_public = bool(request.form.get("is_public"))
         db.session.commit()
         flash(f"{event.name} has been updated.", "success")

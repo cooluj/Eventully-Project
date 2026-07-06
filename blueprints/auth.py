@@ -70,7 +70,16 @@ def settings():
 def resend_verification():
     if current_user.is_email_verified:
         flash("Your email is already verified.", "info")
-    elif send_verification_email(current_user):
+        return redirect(request.referrer or url_for("auth.settings"))
+
+    # Cap per user: every send costs real email-provider quota.
+    limiter_key = f"verify|{current_user.id}"
+    if _rate_limited(limiter_key, max_attempts=3):
+        flash("You've requested several verification emails recently — check your inbox and spam folder.", "info")
+        return redirect(request.referrer or url_for("auth.settings"))
+    _record_failure(limiter_key)
+
+    if send_verification_email(current_user):
         flash("Verification email sent. Check your inbox for the link.", "success")
     else:
         flash("Email delivery is not configured yet, so no verification email was sent.", "info")

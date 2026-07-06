@@ -700,6 +700,57 @@ def test_admin_launch_readiness_test_email_without_smtp(client):
     assert "Email delivery is not configured" in resp.get_data(as_text=True)
 
 
+def _make_officer(app, email="student@uw.edu", club_id=1):
+    with app.app_context():
+        user = User.query.filter_by(email=email).first()
+        db.session.get(Club, club_id).officer_id = user.id
+        db.session.commit()
+
+
+def test_club_website_rejects_script_schemes(client, app):
+    register(client)
+    _make_officer(app)
+
+    resp = post(client, "/officer/club/1/edit", "/officer/club/1/edit",
+                description="d", website="javascript:alert(1)", instagram="",
+                contact_email="", meeting_info="", dues="", hours_per_week="")
+    assert "Website must be a normal http(s) link" in resp.get_data(as_text=True)
+    with app.app_context():
+        assert db.session.get(Club, 1).website == ""
+
+    post(client, "/officer/club/1/edit", "/officer/club/1/edit",
+         description="d", website="uwrobotics.org", instagram="",
+         contact_email="", meeting_info="", dues="", hours_per_week="")
+    with app.app_context():
+        assert db.session.get(Club, 1).website == "https://uwrobotics.org"
+
+
+def test_event_capacity_bad_input_does_not_crash(client, app):
+    register(client)
+    _make_officer(app)
+
+    resp = post(client, "/officer/club/1/events/new", "/officer/club/1/events/new",
+                name="Garbage Capacity", description="", weekday="Monday",
+                time="18:00", location="HUB", image_url="", capacity="lots", is_public="on")
+    assert resp.status_code == 200
+    with app.app_context():
+        event = Event.query.filter_by(name="Garbage Capacity").first()
+        assert event is not None
+        assert event.capacity == 50
+
+
+def test_resend_verification_rate_limited(client, app):
+    import time
+    from blueprints.auth import _attempts
+
+    register(client)
+    with app.app_context():
+        user_id = User.query.filter_by(email="student@uw.edu").first().id
+    _attempts[f"verify|{user_id}"] = [time.time()] * 3
+    resp = post(client, "/resend-verification", "/settings")
+    assert "requested several verification emails" in resp.get_data(as_text=True)
+
+
 def test_remove_demo_events(client, app):
     from seed import DEMO_EVENTS
 
