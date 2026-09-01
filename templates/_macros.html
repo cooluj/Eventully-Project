@@ -137,7 +137,7 @@
   <div class="timeline">
     {% for day, label, sublabel, day_events in day_groups %}
       <div class="timeline-day">
-        <div class="timeline-day-head"><strong>{{ label }}</strong><span>{{ sublabel }}</span></div>
+        <div class="timeline-day-head"><span class="tl-pill"><strong>{{ label }}</strong><span>{{ sublabel }}</span></span></div>
         <div class="cards">
           {% for event in day_events %}{{ event_row(event, rsvp_ids=rsvp_ids) }}{% endfor %}
         </div>

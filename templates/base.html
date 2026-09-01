@@ -52,6 +52,7 @@
       <a class="nav-search-link" href="{{ url_for('main.search') }}" aria-label="Search clubs and events">
         <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       </a>
+      <span class="nav-clock" id="nav-clock" aria-hidden="true"></span>
       {% if current_user.is_authenticated %}
         <a class="nav-bell {{ 'has-unread' if unread_notifications }}" href="{{ url_for('main.notifications') }}"
            aria-label="Notifications{% if unread_notifications %} ({{ unread_notifications }} unread){% endif %}">
@@ -127,6 +128,29 @@
     })();
     var stream = document.querySelector(".message-stream");
     if (stream) stream.scrollTop = stream.scrollHeight;
+    (function () {
+      var clock = document.getElementById("nav-clock");
+      if (!clock) return;
+      var tick = function () {
+        clock.textContent = new Intl.DateTimeFormat("en-US", {
+          hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles",
+          timeZoneName: "short",
+        }).format(new Date());
+      };
+      tick(); setInterval(tick, 30000);
+    })();
+    (function () {
+      var heads = document.querySelectorAll(".timeline-day-head");
+      if (!heads.length) return;
+      var stickTop = 53 + 12;
+      var update = function () {
+        heads.forEach(function (h) {
+          h.classList.toggle("stuck", h.getBoundingClientRect().top <= stickTop + 2);
+        });
+      };
+      document.addEventListener("scroll", update, { passive: true });
+      update();
+    })();
   </script>
   {% block scripts %}{% endblock %}
 </body>

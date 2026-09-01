@@ -78,7 +78,8 @@
       </div>
     {% endif %}
 
-    <h1 class="event-title">{{ event.name }}</h1>
+    {% set tlen = event.name|length %}
+    <h1 class="event-title {{ 'xxl' if tlen > 60 else ('xl' if tlen > 45 else ('long' if tlen > 30 else '')) }}">{{ event.name }}</h1>
 
     <div class="when-row">
       <span class="date-tile"><span class="m">{{ event.date_tile[0] }}</span><span class="d">{{ event.date_tile[1] }}</span></span>
