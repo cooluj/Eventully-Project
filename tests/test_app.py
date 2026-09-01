@@ -533,7 +533,7 @@ def test_calendar_groups_by_weekday(client, app):
     register(client)
     html = client.get("/calendar").get_data(as_text=True)
     assert "Weds Workshop" in html
-    assert "cal-grid" in html
+    assert "week-list" in html
 
 
 def test_search_finds_clubs_and_events(client, app):
@@ -545,7 +545,7 @@ def test_search_finds_clubs_and_events(client, app):
     assert "Robotics Club" in html
     assert "Robot Rumble" in html
     html = client.get("/search?q=zzzznope").get_data(as_text=True)
-    assert "Nothing matched" in html
+    assert "Nothing found" in html
 
 
 def test_help_page_public(client):
@@ -835,3 +835,147 @@ def test_privacy_and_terms_pages_public(client):
     assert "Privacy policy" in client.get("/privacy").get_data(as_text=True)
     assert client.get("/terms").status_code == 200
     assert "Terms of use" in client.get("/terms").get_data(as_text=True)
+
+
+# ---------- real event dates ----------
+def test_one_time_event_lifecycle(client, app):
+    """A dated event sorts by its date, shows on its calendar day, and sinks
+    to Past once it's over."""
+    from datetime import timedelta
+    from utils import campus_now, split_upcoming
+
+    with app.app_context():
+        now = campus_now()
+        future = Event(club_id=1, name="Career Fair Prep",
+                       starts_at=now + timedelta(days=2),
+                       ends_at=now + timedelta(days=2, hours=2),
+                       weekday=(now + timedelta(days=2)).strftime("%A"),
+                       time="17:00")
+        past = Event(club_id=1, name="Old Social",
+                     starts_at=now - timedelta(days=3),
+                     weekday=(now - timedelta(days=3)).strftime("%A"),
+                     time="17:00")
+        weekly = Event(club_id=1, name="Weekly Standup", weekday="Monday", time="09:00")
+        db.session.add_all([future, past, weekly])
+        db.session.commit()
+
+        upcoming, gone = split_upcoming(Event.query.all())
+        assert {e.name for e in upcoming} == {"Career Fair Prep", "Weekly Standup"}
+        assert [e.name for e in gone] == ["Old Social"]
+        assert not weekly.is_past()
+        assert weekly.next_occurrence() >= now
+
+    register(client)
+    html = client.get("/events").get_data(as_text=True)
+    assert "Career Fair Prep" in html
+    assert "Past events" in html and "Old Social" in html
+
+
+def test_officer_posts_one_time_event(client, app):
+    from datetime import timedelta
+    from utils import campus_now
+
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.commit()
+        target = (campus_now() + timedelta(days=5)).strftime("%Y-%m-%d")
+
+    login(client, "owner@uw.edu")
+    post(client, "/officer/club/1/events/new", "/officer/club/1/events/new",
+         name="Robot Demo Day", schedule="once", date=target,
+         time="15:30", end_time="17:00", location="CSE2 G001", capacity="80", is_public="on")
+    with client.application.app_context():
+        event = Event.query.filter_by(name="Robot Demo Day").one()
+        assert event.starts_at is not None and event.starts_at.strftime("%H:%M") == "15:30"
+        assert event.ends_at.strftime("%H:%M") == "17:00"
+        assert not event.is_recurring
+        assert event.weekday == event.starts_at.strftime("%A")
+
+
+def test_calendar_links_carry_real_dates(app):
+    from datetime import datetime
+    from utils import build_calendar_link, build_ics
+
+    with app.app_context():
+        event = Event(club_id=1, name="Dated Event",
+                      starts_at=datetime(2026, 10, 3, 15, 0),
+                      ends_at=datetime(2026, 10, 3, 17, 0),
+                      weekday="Saturday", time="15:00", location="HUB 145")
+        db.session.add(event)
+        db.session.commit()
+        link = build_calendar_link(event)
+        assert "dates=20261003T150000%2F20261003T170000" in link
+        ics = build_ics(event)
+        assert "DTSTART;TZID=America/Los_Angeles:20261003T150000" in ics
+        assert "DTEND;TZID=America/Los_Angeles:20261003T170000" in ics
+        assert "RRULE" not in ics
+
+        weekly = Event(club_id=1, name="Weekly Thing", weekday="Monday", time="18:00")
+        db.session.add(weekly)
+        db.session.commit()
+        assert "COUNT=26" in build_ics(weekly)
+        assert "recur=RRULE" in build_calendar_link(weekly)
+
+
+def test_rejected_image_url_scheme(client, app):
+    with app.app_context():
+        owner = User(email="owner2@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        db.session.get(Club, 2).officer_id = owner.id
+        db.session.commit()
+
+    login(client, "owner2@uw.edu")
+    resp = post(client, "/officer/club/2/events/new", "/officer/club/2/events/new",
+                name="Sneaky", schedule="weekly", weekday="Monday", time="18:00",
+                image_url="javascript:alert(1)")
+    assert "Image must be a normal http(s) link" in resp.get_data(as_text=True)
+    with client.application.app_context():
+        assert Event.query.filter_by(name="Sneaky").count() == 0
+
+
+# ---------- hardening ----------
+def test_reset_token_dies_after_password_change(client, app):
+    register(client, email="resetme@uw.edu")
+    client.get("/logout")
+    with app.app_context():
+        user = User.query.filter_by(email="resetme@uw.edu").one()
+        token = make_email_token(user, "reset-password")
+        # Simulate the reset completing (or any password change)
+        user.set_password("newpass456")
+        db.session.commit()
+    resp = client.get(f"/reset-password/{token}", follow_redirects=True)
+    assert "no longer valid" in resp.get_data(as_text=True)
+
+
+def test_garbage_page_params_dont_crash(client):
+    assert client.get("/clubs?page=abc").status_code == 200
+    assert client.get("/clubs?page=-5").status_code == 200
+    register(client)
+    assert client.get("/recommendations?page=zzz", follow_redirects=True).status_code == 200
+
+
+def test_officer_delete_account_with_posted_events(client, app):
+    """Deleting an account that created events must not 500 (FK nulled)."""
+    with app.app_context():
+        owner = User(email="deleteme@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        db.session.add(owner)
+        db.session.commit()
+        club = db.session.get(Club, 1)
+        club.officer_id = owner.id
+        db.session.add(Event(club_id=1, name="Orphan Event", weekday="Monday",
+                             time="18:00", created_by=owner.id))
+        db.session.commit()
+
+    login(client, "deleteme@uw.edu")
+    resp = post(client, "/settings/delete", "/settings", password="testpass123")
+    assert resp.status_code == 200
+    with client.application.app_context():
+        assert User.query.filter_by(email="deleteme@uw.edu").count() == 0
+        assert Event.query.filter_by(name="Orphan Event").one().created_by is None

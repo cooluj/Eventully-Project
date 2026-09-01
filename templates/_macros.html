@@ -1,28 +1,85 @@
-{# Shared UI components: icons, club cards, event cards #}
+{# Shared UI components: icons, event rows (Luma-style list cards), club cards #}
 
 {% macro icon(name) -%}
   {%- if name == "calendar" -%}
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
   {%- elif name == "pin" -%}
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
   {%- elif name == "clock" -%}
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
   {%- elif name == "tag" -%}
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 2H2v10l9.3 9.3a2 2 0 0 0 2.8 0l7.2-7.2a2 2 0 0 0 0-2.8L12 2Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M12 2H2v10l9.3 9.3a2 2 0 0 0 2.8 0l7.2-7.2a2 2 0 0 0 0-2.8L12 2Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
   {%- elif name == "dollar" -%}
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5.5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5.5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
   {%- elif name == "hourglass" -%}
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 2h12M6 22h12M8 2v4l4 4 4-4V2M8 22v-4l4-4 4 4v4"/></svg>
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M6 2h12M6 22h12M8 2v4l4 4 4-4V2M8 22v-4l4-4 4 4v4"/></svg>
   {%- elif name == "people" -%}
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a7 7 0 0 1 14 0v1M17 4a4 4 0 0 1 0 8M22 21v-1a7 7 0 0 0-4-6.3"/></svg>
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a7 7 0 0 1 14 0v1M17 4a4 4 0 0 1 0 8M22 21v-1a7 7 0 0 0-4-6.3"/></svg>
+  {%- elif name == "arrow-up-right" -%}
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+  {%- elif name == "search" -%}
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
   {%- endif -%}
 {%- endmacro %}
 
+{% macro club_tile(club, size="") %}
+  <span class="club-tile {{ size }}" style="--hue:{{ club.hue }};" aria-hidden="true">{{ club.avatar_letter }}</span>
+{% endmacro %}
+
+{% macro attendee_stack(event, size=4) %}
+  {% set rsvps = event.rsvps[:size] %}
+  {% if event.attendee_count %}
+    <span class="avatar-stack" aria-label="{{ event.attendee_count }} going">
+      {% for r in rsvps %}<span class="person">{{ r.user.name[0]|upper }}</span>{% endfor %}
+      {% if event.attendee_count > size %}<span class="person more">+{{ event.attendee_count - size }}</span>{% endif %}
+    </span>
+  {% endif %}
+{% endmacro %}
+
+{# The Luma-style list card: time → title → host → location → status + faces, square thumb right #}
+{% macro event_row(event, rsvp_ids=None, show_date=False) %}
+  <a class="card hoverable event-row" style="--hue:{{ event.hue }};" href="{{ url_for('events.detail', event_id=event.id) }}">
+    <div class="event-row-body">
+      <span class="event-row-time">
+        {%- if show_date %}{{ event.when_primary }} · {% endif -%}
+        {{ event.when_secondary }}
+      </span>
+      <h3 class="event-row-title">{{ event.name }}</h3>
+      <span class="event-row-host">
+        {{ club_tile(event.club, size="club-tile-sm") }}
+        <span>By {{ event.club.name }}</span>
+      </span>
+      <span class="event-row-loc">{{ icon("pin") }} {{ event.location }}</span>
+      <div class="event-row-meta">
+        {% if rsvp_ids and event.id in rsvp_ids %}
+          <span class="badge badge-member">You're in</span>
+        {% elif event.remaining_spots == 0 %}
+          <span class="badge badge-full">Full</span>
+        {% elif event.capacity and event.capacity_percent >= 80 %}
+          <span class="badge badge-full">Near capacity</span>
+        {% elif not event.is_public %}
+          <span class="badge badge-category">Members</span>
+        {% else %}
+          <span class="badge badge-free">Open</span>
+        {% endif %}
+        {{ attendee_stack(event) }}
+      </div>
+    </div>
+    <span class="event-row-thumb {{ 'placeholder' if not event.image_url }}"
+          {% if event.image_url %}style="background-image:url('{{ event.image_url }}')"{% endif %}>
+      {%- if not event.image_url %}{{ event.club.avatar_letter }}{% endif -%}
+    </span>
+  </a>
+{% endmacro %}
+
+{# Backwards-compatible alias — some templates still import event_card #}
+{% macro event_card(event, rsvp_ids=None) %}{{ event_row(event, rsvp_ids=rsvp_ids, show_date=True) }}{% endmacro %}
+
 {% macro club_card(club, joined_ids=None, saved_ids=None, match=None, next_url=None, show_actions=False, hide_form=False) %}
-  <div class="club-card">
+  <div class="card hoverable club-card" style="--hue:{{ club.hue }};">
     <div class="club-card-head">
-      <span class="avatar avatar-{{ club.id % 5 }}">{{ club.avatar_letter }}</span>
-      <h3>{{ club.name }}</h3>
+      {{ club_tile(club) }}
+      <h3><a href="{{ url_for('clubs.detail', club_id=club.id) }}" style="color:inherit;">{{ club.name }}</a></h3>
       {% if show_actions and current_user.is_authenticated %}
         <div class="card-actions">
           <form method="POST" action="{{ url_for('clubs.save', club_id=club.id) }}">
@@ -47,79 +104,45 @@
 
     <div class="icon-meta">
       <span>{{ icon("tag") }} {{ club.category }}</span>
-      {% if club.dues %}<span>{{ icon("dollar") }} {{ club.dues }}</span>{% endif %}
-      {% if club.hours_per_week %}<span>{{ icon("hourglass") }} {{ club.hours_per_week }}</span>{% endif %}
-      {% if club.member_count %}<span>{{ icon("people") }} {{ club.member_count }} member{{ 's' if club.member_count != 1 }}</span>{% endif %}
+      {% if club.member_count %}<span>{{ icon("people") }} {{ club.member_count }}</span>{% endif %}
+      {% if club.meeting_info %}<span>{{ icon("calendar") }} {{ club.meeting_info }}</span>{% endif %}
     </div>
 
     <p class="club-desc">{{ club.description or "No description yet — an officer can claim this listing and add one." }}</p>
 
-    {% if club.updated_at %}
-      <span class="card-updated">Last updated: {{ club.updated_at|days_ago }}</span>
-    {% endif %}
-
-    {% if match or (joined_ids and club.id in joined_ids) %}
-      <div class="club-card-foot">
-        {% if match %}
-          <div class="match-score">
-            <div class="score-bar"><span style="width:{{ match.score }}%"></span></div>
-            <span class="score-num">{{ match.score }}% match</span>
-          </div>
-        {% else %}<span></span>{% endif %}
-        {% if joined_ids and club.id in joined_ids %}
-          <span class="badge badge-member">Joined</span>
-        {% elif match and match.badge %}
-          <span class="badge badge-{{ match.badge }}">{{ match.badge }}</span>
-        {% endif %}
-      </div>
-    {% endif %}
+    <div class="club-card-foot">
+      {% if match and match.score is not none %}
+        <div class="match-score">
+          <div class="score-bar"><span style="width:{{ match.score }}%"></span></div>
+          <span class="score-num">{{ match.score }}%</span>
+        </div>
+      {% else %}<span></span>{% endif %}
+      {% if joined_ids and club.id in joined_ids %}
+        <span class="badge badge-member">Joined</span>
+      {% elif not club.is_claimed %}
+        <span class="badge badge-unclaimed">Unclaimed — officer?</span>
+      {% elif match and match.badge %}
+        <span class="badge badge-officer">{{ match.badge }} match</span>
+      {% endif %}
+    </div>
 
     {% if match and match.reasons %}
       <div class="match-reasons" aria-label="Why this club matches">
-        {% for reason in match.reasons[:3] %}
-          <span>{{ reason }}</span>
-        {% endfor %}
+        {% for reason in match.reasons[:3] %}<span>{{ reason }}</span>{% endfor %}
       </div>
     {% endif %}
-
-    <a href="{{ url_for('clubs.detail', club_id=club.id) }}" class="btn btn-block btn-sm">View Club →</a>
   </div>
 {% endmacro %}
 
-{% macro event_card(event, rsvp_ids=None) %}
-  <a class="ticket" href="{{ url_for('events.detail', event_id=event.id) }}">
-    {% if event.image_url %}
-      <div class="ticket-img" style="background-image:url('{{ event.image_url }}')">
-        <span class="ticket-scope">{{ "Public" if event.is_public else "Members" }}</span>
-      </div>
-    {% endif %}
-    <div class="ticket-body">
-      <div class="ticket-topline">
-        <span class="ticket-kicker">{{ event.club.category }}</span>
-        {% if not event.image_url %}<span class="ticket-scope inline">{{ "Public" if event.is_public else "Members" }}</span>{% endif %}
-      </div>
-      <h3>{{ event.name }}</h3>
-      <div class="icon-meta">
-        <span>{{ icon("calendar") }} {{ event.weekday }}</span>
-        <span>{{ icon("clock") }} {{ event.time }}</span>
-        <span>{{ icon("pin") }} {{ event.location }}</span>
-      </div>
-      <span class="ticket-meta">{{ event.club.name }}</span>
-      <div class="ticket-capacity" aria-label="{{ event.attendee_count }} of {{ event.capacity }} spots filled">
-        <div class="capacity-copy">
-          <span>{{ event.remaining_spots }} spot{{ 's' if event.remaining_spots != 1 }} left</span>
-          <strong>{{ event.capacity_percent }}%</strong>
+{% macro timeline(day_groups, rsvp_ids=None) %}
+  <div class="timeline">
+    {% for day, label, sublabel, day_events in day_groups %}
+      <div class="timeline-day">
+        <div class="timeline-day-head"><strong>{{ label }}</strong><span>{{ sublabel }}</span></div>
+        <div class="cards">
+          {% for event in day_events %}{{ event_row(event, rsvp_ids=rsvp_ids) }}{% endfor %}
         </div>
-        <div class="capacity-track"><span style="width:{{ event.capacity_percent }}%"></span></div>
       </div>
-      <div class="ticket-perf">
-        <span class="going">{{ event.attendee_count }}/{{ event.capacity }} going</span>
-        {% if rsvp_ids and event.id in rsvp_ids %}
-          <span class="ticket-status">You're in</span>
-        {% else %}
-          <span class="ticket-details">View details</span>
-        {% endif %}
-      </div>
-    </div>
-  </a>
+    {% endfor %}
+  </div>
 {% endmacro %}

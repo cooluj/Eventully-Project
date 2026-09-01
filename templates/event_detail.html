@@ -1,75 +1,136 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, club_tile, attendee_stack with context %}
 {% block title %}{{ event.name }}{% endblock %}
 
+{% block meta %}
+  <meta name="description" content="{{ (event.description or event.name)[:160] }}">
+  <meta property="og:title" content="{{ event.name }} · {{ event.club.name }}">
+  <meta property="og:description" content="{{ event.when_primary }}, {{ event.when_secondary }} · {{ event.location }}{% if event.description %} — {{ event.description[:140] }}{% endif %}">
+  <meta property="og:type" content="article">
+  {% if event.image_url %}<meta property="og:image" content="{{ event.image_url }}">{% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if event.image_url else 'summary' }}">
+{% endblock %}
+
+{% block main_class %}tinted{% endblock %}
+{% block main_attrs %}style="--hue:{{ event.hue }};"{% endblock %}
+
 {% block content %}
-<section class="event-show container">
-  <div class="event-show-hero">
-    <div class="event-show-copy">
-      <span class="make-kicker">{{ "Public event" if event.is_public else "Members only" }} · {{ event.club.category }}</span>
-      <h1>{{ event.name }}</h1>
-      <p>Hosted by <a href="{{ url_for('clubs.detail', club_id=event.club.id) }}">{{ event.club.name }}</a></p>
-      <div class="event-facts">
-        <span>{{ event.weekday }}, {{ event.time }}</span>
-        <span>{{ event.location }}</span>
-        <span>{{ event.remaining_spots }} spot{{ 's' if event.remaining_spots != 1 }} left</span>
-      </div>
+<div class="event-page">
+  <div class="event-page-left">
+    <div class="event-cover {{ 'placeholder' if not event.image_url }}"
+         {% if event.image_url %}style="background-image:url('{{ event.image_url }}')"{% endif %}>
+      {%- if not event.image_url %}{{ event.club.avatar_letter }}{% endif -%}
     </div>
-    <div class="event-show-art" {% if event.image_url %}style="background-image:url('{{ event.image_url }}')"{% endif %}>
-      <span>{{ event.capacity_percent }}% full</span>
+
+    <div class="side-block">
+      <h4>Hosted By</h4>
+      <a class="host-row" href="{{ url_for('clubs.detail', club_id=event.club.id) }}">
+        {{ club_tile(event.club, size="club-tile-sm") }}
+        <span>{{ event.club.name }}<span class="sub">{{ event.club.category }}</span></span>
+      </a>
+    </div>
+
+    {% if event.attendee_count %}
+    <div class="side-block">
+      <h4>{{ event.attendee_count }} Going</h4>
+      {{ attendee_stack(event, size=5) }}
+    </div>
+    {% endif %}
+
+    <div class="side-block quiet-links">
+      {% if event.club.contact_email %}<a href="mailto:{{ event.club.contact_email }}">Contact the Host</a>{% endif %}
+      <a href="{{ url_for('clubs.detail', club_id=event.club.id) }}">More from this club</a>
     </div>
   </div>
 
-  <div class="event-show-layout">
-    <article class="event-story panel">
-      <span class="eyebrow">About this event</span>
-      <p>{{ event.description or "The host has not added a full description yet. RSVP to keep it on your calendar, then check back for updates." }}</p>
+  <div class="event-page-right">
+    <span class="featured-chip">
+      {{ club_tile(event.club, size="club-tile-sm") }}
+      <span class="muted">Featured in</span> {{ event.club.category }}
+    </span>
 
-      <div class="detail-grid">
-        <div>
-          <span>When</span>
-          <strong>{{ event.weekday }}, {{ event.time }}</strong>
-        </div>
-        <div>
-          <span>Where</span>
-          <strong>{{ event.location }}</strong>
-        </div>
-        <div>
-          <span>Open to</span>
-          <strong>{{ "Everyone" if event.is_public else "Club members only" }}</strong>
-        </div>
-        <div>
-          <span>Hosted by</span>
-          <strong>{{ event.club.name }}</strong>
-        </div>
-      </div>
-    </article>
+    <h1 class="event-title">{{ event.name }}</h1>
 
-    <aside class="event-rsvp-panel">
-      <div class="panel">
-        <span class="eyebrow">Reserve your spot</span>
-        <h2>{{ event.attendee_count }}/{{ event.capacity }} going</h2>
-        <div class="capacity-copy">
-          <span>{{ event.remaining_spots }} spot{{ 's' if event.remaining_spots != 1 }} left</span>
-          <strong>{{ event.capacity_percent }}%</strong>
-        </div>
-        <div class="capacity-track large"><span style="width:{{ event.capacity_percent }}%"></span></div>
+    <div class="when-row">
+      <span class="date-tile"><span class="m">{{ event.date_tile[0] }}</span><span class="d">{{ event.date_tile[1] }}</span></span>
+      <span>
+        <span class="primary-line">{{ event.when_primary }}</span>
+        <small class="secondary-line">{{ event.when_secondary }}</small>
+      </span>
+    </div>
+
+    <div class="when-row">
+      <span class="icon-tile">{{ icon("pin") }}</span>
+      <span>
+        <span class="primary-line">{{ event.location }}</span>
+        <small class="secondary-line">{{ "Open to all students" if event.is_public else "Members only" }}</small>
+      </span>
+    </div>
+
+    <div class="card rsvp-card">
+      <div class="rsvp-card-head">Registration</div>
+      <div class="rsvp-card-body">
         {% if not current_user.is_authenticated %}
-        <a href="{{ url_for('auth.login', next=request.path) }}" class="btn btn-block">Log in to RSVP</a>
+          <div class="rsvp-status">
+            <span class="icon-tile">{{ icon("people") }}</span>
+            <span><strong>Welcome!</strong><span>To register for this event, log in or create a free account.</span></span>
+          </div>
+          <a href="{{ url_for('auth.login', next=request.path) }}" class="btn btn-block">Log in to Register</a>
+        {% elif is_rsvpd %}
+          <div class="rsvp-status">
+            <span class="icon-tile" style="color:var(--ok);">✓</span>
+            <span><strong>You're In</strong><span>We saved your spot. See you there!</span></span>
+          </div>
+          <div class="rsvp-aftercare">
+            <a href="{{ calendar_link }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Add to Google Calendar</a>
+            <a href="{{ url_for('events.ics', event_id=event.id) }}" class="btn btn-outline btn-sm">Apple / .ics</a>
+          </div>
+          <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-ghost btn-block btn-sm">Can't make it? Cancel registration</button>
+          </form>
+        {% elif event.remaining_spots == 0 %}
+          <div class="rsvp-status">
+            <span class="icon-tile">{{ icon("hourglass") }}</span>
+            <span><strong>Event Full</strong><span>All {{ event.capacity }} spots are taken. Check back — spots open when people cancel.</span></span>
+          </div>
+          <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-block" disabled>Event Full</button>
+          </form>
         {% else %}
-        <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-block {{ 'btn-outline' if is_rsvpd else 'btn-gold' }}"
-            {% if not is_rsvpd and event.attendee_count >= event.capacity %}disabled{% endif %}>
-            {% if is_rsvpd %}Cancel RSVP{% elif event.attendee_count >= event.capacity %}Event full{% else %}RSVP{% endif %}
-          </button>
-        </form>
+          <div class="rsvp-identity">
+            <span class="person" style="width:32px;height:32px;font-size:0.8rem;">{{ current_user.name[0]|upper }}</span>
+            <span><strong>{{ current_user.name }}</strong><br>{{ current_user.email }}</span>
+          </div>
+          <form method="POST" action="{{ url_for('events.rsvp', event_id=event.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-block">Register</button>
+          </form>
         {% endif %}
-        <div class="event-save-actions">
-          <a href="{{ calendar_link }}" target="_blank" rel="noopener" class="btn btn-outline btn-block">Google Calendar</a>
-          {% if current_user.is_authenticated %}<a href="{{ url_for('events.ics', event_id=event.id) }}" class="btn btn-ghost btn-block">Download .ics</a>{% endif %}
-        </div>
+        {% if event.capacity and event.capacity_percent >= 50 and event.remaining_spots > 0 %}
+          <div>
+            <div class="capacity-copy"><span>{{ event.remaining_spots }} spot{{ 's' if event.remaining_spots != 1 }} left</span><strong>{{ event.capacity_percent }}%</strong></div>
+            <div class="capacity-track"><span style="width:{{ event.capacity_percent }}%"></span></div>
+          </div>
+        {% endif %}
       </div>
-    </aside>
+    </div>
+
+    <div class="side-block about-block">
+      <h4>About Event</h4>
+      {% if event.description %}
+        {% for para in event.description.split('\n\n') %}<p>{{ para }}</p>{% endfor %}
+      {% else %}
+        <p class="muted">The host hasn't added a full description yet. Register to keep it on your calendar, then check back for updates.</p>
+      {% endif %}
+    </div>
+
+    <div class="side-block">
+      <h4>Location</h4>
+      <p style="margin:0;"><strong style="font-weight:500;">{{ event.location }}</strong><br>
+      <span class="muted" style="font-size:var(--text-sm);">University of Washington, Seattle</span></p>
+    </div>
   </div>
-</section>
+</div>
 {% endblock %}

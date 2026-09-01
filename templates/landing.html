@@ -2,126 +2,75 @@
 {% block title %}Find your UW community{% endblock %}
 
 {% block content %}
-<section class="make-hero">
-  <div class="container make-hero-grid">
-    <div class="make-hero-copy">
-      <span class="make-kicker">UW clubs, events, and officer tools</span>
-      <h1>Find Your People. Run Your Club. All in One Place.</h1>
-      <p class="hero-sub">Eventully matches students with {{ stats.total_clubs }} campus organizations, live events, and the people behind them. Officers get one clean place to publish, manage, and grow.</p>
-      <div class="hero-actions">
-        <a href="{{ url_for('auth.register') }}" class="btn btn-hero">Find clubs</a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-hero-outline">Manage my club</a>
-      </div>
-      <div class="make-stat-row" aria-label="Eventully platform stats">
-        <div><strong>{{ stats.total_clubs }}</strong><span>Clubs indexed</span></div>
-        <div><strong>{{ stats.categories }}</strong><span>Categories</span></div>
-        <div><strong>{{ stats.total_events }}</strong><span>Live events</span></div>
-        <div><strong>.edu</strong><span>Verified access</span></div>
-      </div>
+<section class="landing-hero">
+  <div class="container">
+    <span class="page-kicker">Every UW club, one place</span>
+    <h1>Find your people. Run your club.</h1>
+    <p class="hero-sub">Eventully is where UW's {{ stats.total_clubs }} registered student organizations and their events live — matched to what you actually care about.</p>
+    <div class="hero-actions">
+      <a href="{{ url_for('auth.register') }}" class="btn btn-brand">Find clubs</a>
+      <a href="{{ url_for('auth.register', next=url_for('clubs.browse', status='unclaimed')) }}" class="btn btn-outline">I run a club</a>
+      <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost">Just browse →</a>
     </div>
-
-    <div class="make-preview" aria-label="Eventully product preview">
-      <div class="preview-card search-preview">
-        <span class="preview-label">AI search</span>
-        <strong>Find me CS clubs with startup energy</strong>
-        <p>14 matches across technology, business, and design.</p>
-      </div>
-      <div class="preview-card club-preview">
-        <div class="preview-head">
-          <span class="avatar avatar-2">H</span>
-          <div>
-            <strong>Husky Entrepreneurs</strong>
-            <span>Business · 91% match</span>
-          </div>
-        </div>
-        <div class="score-ring" aria-hidden="true"><span>91</span></div>
-        <p>Matches your founder interest, medium time commitment, and evening availability.</p>
-      </div>
-      <div class="preview-card event-preview">
-        <span class="preview-label">Tonight</span>
-        <strong>AI/ML Workshop</strong>
-        <span class="preview-meta">ACM @ UW · CSE 305 · 6:30 PM</span>
-        <div class="capacity-copy">
-          <span>12 spots left</span>
-          <strong>80%</strong>
-        </div>
-        <div class="capacity-track"><span style="width:80%"></span></div>
-        <span class="preview-rsvp">RSVP open</span>
-      </div>
+    <div class="hero-stats" aria-label="Eventully platform stats">
+      <div><strong>{{ stats.total_clubs }}</strong><span>Clubs indexed</span></div>
+      <div><strong>{{ stats.categories }}</strong><span>Categories</span></div>
+      {% if stats.total_events %}<div><strong>{{ stats.total_events }}</strong><span>Upcoming events</span></div>{% endif %}
+      <div><strong>.edu</strong><span>Students only</span></div>
     </div>
   </div>
 </section>
 
-<section class="section container make-section">
-  <div class="section-head">
-    <div>
-      <span class="eyebrow">Start fast</span>
-      <h2>Everything students check first</h2>
-    </div>
+{% if ticker_clubs %}
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    {% for name in ticker_clubs + ticker_clubs %}<span class="chip">{{ name }}</span>{% endfor %}
   </div>
-  <div class="quick-cards feature-cards">
-    <a class="quick-card" href="{{ url_for('events.browse') }}">
-      <div class="quick-card-img" style="background-image:url('https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800')"></div>
-      <div class="quick-card-body">
-        <strong>Browse events</strong>
-        <span>See what's happening on campus this week</span>
-      </div>
-    </a>
-    <a class="quick-card" href="{{ url_for('clubs.browse') }}">
-      <div class="quick-card-img" style="background-image:url('https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800')"></div>
-      <div class="quick-card-body">
-        <strong>Explore clubs</strong>
-        <span>All {{ stats.total_clubs }} registered student organizations</span>
-      </div>
-    </a>
-    <a class="quick-card" href="{{ url_for('auth.register') }}">
-      <div class="quick-card-img" style="background-image:url('https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800')"></div>
-      <div class="quick-card-body">
-        <strong>Take the survey</strong>
-        <span>Get personalized club recommendations</span>
-      </div>
-    </a>
-  </div>
-</section>
+</div>
+{% endif %}
 
-<section class="section container" style="padding-top:20px; padding-bottom:24px;">
+<section class="section container">
   <div class="section-head">
-    <h2 style="margin:0;">Popular categories</h2>
+    <h2>Browse by category</h2>
+    <a class="view-all" href="{{ url_for('clubs.browse') }}">Full directory →</a>
   </div>
-  <div class="category-strip">
+  <div class="landing-cats">
     {% for cat, count in stats.top_categories.items() %}
-      <span class="chip">{{ cat }} · {{ count }}</span>
+      <a class="card hoverable cat-tile" href="{{ url_for('clubs.browse', category=cat) }}" style="--hue:{{ (loop.index * 137) % 360 }};">
+        <span class="club-tile">{{ cat[0] }}</span>
+        <span><strong>{{ cat }}</strong><span>{{ count }} clubs</span></span>
+      </a>
     {% endfor %}
   </div>
 </section>
 
-<section class="section container" style="padding-top:20px; padding-bottom:24px;">
-  <div class="panel panel-dashed" style="display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
+<section class="section container">
+  <div class="card panel-dashed" style="display:flex; justify-content:space-between; align-items:center; gap:1.5rem; flex-wrap:wrap;">
     <div>
-      <span class="eyebrow">Run a club?</span>
-      <h3 style="margin:6px 0 0;">Claim your club's listing — free</h3>
-      <p class="muted" style="margin:6px 0 0; max-width:52ch;">Edit your description, add meeting times and links, and post events students can RSVP to. Takes about two minutes.</p>
+      <span class="page-kicker">Run a club?</span>
+      <h3 style="margin:0 0 0.25rem;">Claim your club's listing — free, forever</h3>
+      <p class="muted" style="margin:0; max-width:52ch;">Edit your description, add meeting times and links, post events students can register for, and message your members. Takes about two minutes.</p>
     </div>
-    <a href="{{ url_for('auth.register') }}" class="btn">Claim a club</a>
+    <a href="{{ url_for('auth.register', next=url_for('clubs.browse', status='unclaimed')) }}" class="btn">Claim your club</a>
   </div>
 </section>
 
-<section class="section container" style="padding-top:20px;">
-  <div class="trust-strip">
-    <div class="trust-item">
-      <span class="trust-icon trust-icon-0">🔍</span>
-      <strong>Transparent recommendations</strong>
-      <span>We show you how matches work — scores and reasons, not a black box</span>
+<section class="section container" style="padding-top:0;">
+  <div class="club-grid">
+    <div class="card" style="padding:1.25rem;">
+      <span class="page-kicker">Honest matching</span>
+      <h3 style="font-weight:500;">Scores you can read</h3>
+      <p class="muted" style="margin:0; font-size:var(--text-sm);">Every recommendation shows the reasons behind it — your interests, your major, your schedule. No black box.</p>
     </div>
-    <div class="trust-item">
-      <span class="trust-icon trust-icon-1">🔒</span>
-      <strong>Privacy-first</strong>
-      <span>Your data stays yours. No ads, no tracking, no selling</span>
+    <div class="card" style="padding:1.25rem;">
+      <span class="page-kicker">Privacy-first</span>
+      <h3 style="font-weight:500;">Your data stays yours</h3>
+      <p class="muted" style="margin:0; font-size:var(--text-sm);">No ads, no tracking, no selling. Delete your account any time — everything goes with it.</p>
     </div>
-    <div class="trust-item">
-      <span class="trust-icon trust-icon-2">💬</span>
-      <strong>Help when you need it</strong>
-      <span><a href="{{ url_for('main.help_page') }}" style="color:var(--purple);">FAQ and support</a> available</span>
+    <div class="card" style="padding:1.25rem;">
+      <span class="page-kicker">For officers</span>
+      <h3 style="font-weight:500;">One clean home base</h3>
+      <p class="muted" style="margin:0; font-size:var(--text-sm);">A page worth linking in your Instagram bio: events, RSVPs, member messages, and your club's story.</p>
     </div>
   </div>
 </section>

@@ -1,29 +1,35 @@
 {% extends "base.html" %}
-{% block title %}Calendar{% endblock %}
+{% block title %}This week{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <div class="section-head">
+<section class="app-page container-narrow">
+  <div class="page-hero">
     <div>
-      <span class="eyebrow">Your week</span>
-      <h2 style="margin:4px 0 0;">Weekly calendar</h2>
+      <span class="page-kicker">Your week</span>
+      <h1>This week</h1>
+      <p>Everything happening over the next seven days — public events plus your clubs' members-only ones.</p>
     </div>
-    <a href="{{ url_for('events.browse') }}" class="view-all">Browse all events →</a>
+    <a href="{{ url_for('events.browse') }}" class="btn btn-ghost">All events</a>
   </div>
-  <p class="muted" style="margin-bottom:20px;">Recurring weekly events from public listings and your clubs.
-    <span style="color:var(--green); font-weight:700;">Green</span> means you've RSVP'd.</p>
 
-  <div class="cal-grid">
-    {% for day in weekdays %}
-      <div class="cal-col">
-        <h4>{{ day[:3] }}</h4>
-        {% for event in by_day[day] %}
-          <a class="cal-event {{ 'rsvpd' if event.id in rsvp_ids }}" href="{{ url_for('events.detail', event_id=event.id) }}">
-            <strong>{{ event.name }}</strong>
-            <span>{{ event.time }} · {{ event.location }}</span>
+  <div class="week-list">
+    {% for day, day_events in week %}
+      <div class="card" style="padding:0.875rem 1rem;">
+        <div class="week-day-head" style="margin-bottom:{{ '0.5rem' if day_events else '0' }};">
+          <strong>{{ "Today" if day == today else day.strftime("%A") }}</strong>
+          <span>{{ day.strftime("%b %d").replace(" 0", " ") }}</span>
+        </div>
+        {% for event in day_events %}
+          <a class="cal-event-row {{ 'rsvpd' if event.id in rsvp_ids }}" href="{{ url_for('events.detail', event_id=event.id) }}">
+            <span class="date-tile" style="width:auto; padding:0 0.5rem; height:32px;"><span class="d" style="font-size:0.8rem;">{{ event.when_secondary.split('·')[0].split('–')[0].strip() }}</span></span>
+            <span style="flex:1; min-width:0;">
+              <strong>{{ event.name }}</strong>
+              <span>{{ event.club.name }} · {{ event.location }}</span>
+            </span>
+            {% if event.id in rsvp_ids %}<span class="badge badge-member">Going</span>{% endif %}
           </a>
         {% else %}
-          <div class="cal-empty">—</div>
+          <div class="cal-empty-day">Nothing scheduled.</div>
         {% endfor %}
       </div>
     {% endfor %}

@@ -3,7 +3,7 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import RSVP, Club, Event
-from utils import WEEKDAYS, build_calendar_link, build_ics, event_sort_key
+from utils import WEEKDAYS, build_calendar_link, build_ics, group_events_by_day, split_upcoming
 
 bp = Blueprint("events", __name__)
 
@@ -59,12 +59,15 @@ def browse():
     if day != "all":
         query = query.filter(Event.weekday == day)
 
-    visible_events = sorted(query.all(), key=event_sort_key)
+    upcoming, past = split_upcoming(query.all())
+    day_groups = group_events_by_day(upcoming)
     categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
 
     return render_template(
         "events.html",
-        events=visible_events,
+        events=upcoming,
+        day_groups=day_groups,
+        past_events=past[:12],
         categories=categories,
         days=["all"] + WEEKDAYS,
         scopes=[

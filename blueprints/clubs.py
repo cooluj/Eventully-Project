@@ -3,6 +3,8 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Club, ClubClaim, Membership, SavedClub
+from notifications import send_email
+from utils import group_events_by_day, is_safe_next_url, parse_page, split_upcoming
 
 bp = Blueprint("clubs", __name__)
 
@@ -11,7 +13,7 @@ bp = Blueprint("clubs", __name__)
 def browse():
     category = request.args.get("category", "all")
     search = request.args.get("search", "").strip()
-    page = int(request.args.get("page", 0))
+    page = parse_page(request.args.get("page"))
     per_page = current_app.config["CLUBS_PER_PAGE"]
 
     status = request.args.get("status", "all")
@@ -72,6 +74,13 @@ def detail(club_id):
         pending_claim = None
     similar = Club.query.filter(Club.category == club.category, Club.id != club.id).limit(4).all()
 
+    visible_events = [
+        e for e in club.events
+        if e.is_public or is_officer
+        or (current_user.is_authenticated and club.id in current_user.joined_club_ids)
+    ]
+    upcoming, past = split_upcoming(visible_events)
+
     return render_template(
         "club_detail.html",
         club=club,
@@ -80,6 +89,8 @@ def detail(club_id):
         is_officer=is_officer,
         pending_claim=pending_claim,
         similar_clubs=similar,
+        upcoming_groups=group_events_by_day(upcoming),
+        past_events=past,
     )
 
 
@@ -131,7 +142,23 @@ def claim(club_id):
 
         db.session.add(ClubClaim(club_id=club.id, user_id=current_user.id, message=message))
         db.session.commit()
-        flash("Claim request submitted! We'll review it shortly.", "success")
+        # Claims used to rot unseen — tell the admins now and confirm to the
+        # claimant so the officer funnel doesn't silently stall.
+        claim_url = url_for("admin.claims", _external=True)
+        for admin_email in current_app.config["ADMIN_EMAILS"]:
+            send_email(
+                admin_email,
+                f"New club claim: {club.name}",
+                f"{current_user.name} ({current_user.email}) requested to claim {club.name}.\n\n"
+                f"Their note:\n{message}\n\nReview it here: {claim_url}",
+            )
+        send_email(
+            current_user.email,
+            f"We got your claim for {club.name}",
+            f"Hi {current_user.name},\n\nYour claim for {club.name} is in the review queue. "
+            "You'll get an email as soon as it's decided — usually within a day.\n\nEventully",
+        )
+        flash("Claim request submitted! We'll email you as soon as it's reviewed.", "success")
         return redirect(url_for("clubs.detail", club_id=club.id))
 
     return render_template("claim_club.html", club=club)
@@ -155,7 +182,10 @@ def _toggle_bookmark(club_id, kind):
 def save(club_id):
     club, added = _toggle_bookmark(club_id, "saved")
     flash(f"Saved {club.name} to your list." if added else f"Removed {club.name} from your saved clubs.", "success" if added else "info")
-    return redirect(request.form.get("next") or url_for("clubs.detail", club_id=club.id))
+    next_url = request.form.get("next")
+    if is_safe_next_url(next_url, request.host_url):
+        return redirect(next_url)
+    return redirect(url_for("clubs.detail", club_id=club.id))
 
 
 @bp.route("/club/<int:club_id>/hide", methods=["POST"])
@@ -164,4 +194,7 @@ def hide(club_id):
     club, added = _toggle_bookmark(club_id, "hidden")
     if added:
         flash(f"Got it — we won't recommend {club.name} again.", "info")
-    return redirect(request.form.get("next") or url_for("main.recommendations"))
+    next_url = request.form.get("next")
+    if is_safe_next_url(next_url, request.host_url):
+        return redirect(next_url)
+    return redirect(url_for("main.recommendations"))

@@ -7,8 +7,8 @@ from flask_login import current_user, login_required, login_user, logout_user
 from itsdangerous import BadSignature, SignatureExpired
 
 from extensions import db
-from models import Club, ClubClaim, ClubMessage, ClubRole, User
-from notifications import load_email_token, send_password_reset_email, send_verification_email
+from models import Club, ClubClaim, ClubMessage, ClubRole, Event, User
+from notifications import load_email_token, send_password_reset_email, send_verification_email, token_matches_user
 from utils import is_safe_next_url
 
 bp = Blueprint("auth", __name__)
@@ -98,7 +98,7 @@ def verify_email(token):
         return redirect(url_for("auth.login"))
 
     user = db.session.get(User, data.get("uid"))
-    if not user or user.email != data.get("email"):
+    if not token_matches_user(data, user):
         flash("That verification link no longer matches an account.", "error")
         return redirect(url_for("auth.login"))
 
@@ -158,11 +158,12 @@ def register():
         if email_sent:
             flash(f"Welcome to Eventully, {user.name.split(' ')[0]}! Check your inbox to verify your email.", "success")
         else:
-            flash(
-                f"Welcome to Eventully, {user.name.split(' ')[0]}! Email delivery is not configured yet, "
-                "so verification is temporarily unavailable.",
-                "success",
-            )
+            flash(f"Welcome to Eventully, {user.name.split(' ')[0]}!", "success")
+        # An officer arriving from "claim your club" shouldn't be detoured
+        # into the student survey — honor the destination they came for.
+        next_url = request.args.get("next") or request.form.get("next")
+        if is_safe_next_url(next_url, request.host_url):
+            return redirect(next_url)
         return redirect(url_for("main.onboarding"))
 
     return render_template("register.html", email="", name="")
@@ -238,8 +239,8 @@ def reset_password(token):
         return redirect(url_for("auth.forgot_password"))
 
     user = db.session.get(User, data.get("uid"))
-    if not user or user.email != data.get("email"):
-        flash("That reset link no longer matches an account.", "error")
+    if not token_matches_user(data, user, require_fingerprint=True):
+        flash("That reset link is no longer valid. Request a fresh one.", "error")
         return redirect(url_for("auth.forgot_password"))
 
     if request.method == "POST":
@@ -275,6 +276,9 @@ def delete_account():
 
     user = current_user._get_current_object()
     Club.query.filter_by(officer_id=user.id).update({"officer_id": None, "claimed_at": None})
+    # Events posted by this user survive (they belong to the club); the FK
+    # must be nulled or the delete 500s for any officer who ever posted one.
+    Event.query.filter_by(created_by=user.id).update({"created_by": None})
     ClubClaim.query.filter_by(user_id=user.id).delete()
     ClubClaim.query.filter_by(decided_by=user.id).update({"decided_by": None})
     ClubRole.query.filter_by(user_id=user.id).delete()

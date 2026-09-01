@@ -60,10 +60,19 @@ def create_app(config_class=Config):
 
     @app.template_filter("short_datetime")
     def short_datetime(dt):
+        # DB timestamps are naive UTC; students read Pacific wall time.
+        from utils import utc_to_campus
         if not dt:
             return ""
-        text = dt.strftime("%b %d, %I:%M %p")
+        text = utc_to_campus(dt).strftime("%b %d, %I:%M %p")
         return text.replace(" 0", " ").replace(", 0", ", ")
+
+    @app.template_filter("clock_time")
+    def clock_time(dt):
+        from utils import utc_to_campus
+        if not dt:
+            return ""
+        return utc_to_campus(dt).strftime("%I:%M %p").lstrip("0")
 
     @app.context_processor
     def inject_admin_flag():

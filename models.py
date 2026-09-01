@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -147,6 +147,12 @@ class Club(db.Model):
     def avatar_letter(self):
         return (self.name or "?")[0].upper()
 
+    @property
+    def hue(self):
+        # Stable hue for the club's tinted pages and avatar. Golden-angle
+        # spacing so adjacent ids land far apart on the color wheel.
+        return ((self.id or 0) * 137) % 360
+
 
 class Membership(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -215,6 +221,12 @@ class Event(db.Model):
     description = db.Column(db.Text, default="")
     weekday = db.Column(db.String(20), default="Monday")
     time = db.Column(db.String(20), default="18:00")
+    # One-time events carry a real calendar date; weekly events leave these
+    # NULL and repeat via weekday/time. Stored as naive campus-local wall
+    # time (America/Los_Angeles) — single-campus product, matches how the
+    # legacy time strings were always interpreted.
+    starts_at = db.Column(db.DateTime, nullable=True)
+    ends_at = db.Column(db.DateTime, nullable=True)
     location = db.Column(db.String(200), default="TBD")
     image_url = db.Column(db.String(500), default="")
     capacity = db.Column(db.Integer, default=50)
@@ -223,6 +235,81 @@ class Event(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     rsvps = db.relationship("RSVP", backref="event", cascade="all, delete-orphan")
+
+    @property
+    def is_recurring(self):
+        return self.starts_at is None
+
+    def next_occurrence(self, now=None):
+        """Campus-local datetime of the next time this event happens.
+
+        One-time events return starts_at even when it is already past
+        (callers split upcoming vs past). Weekly events return the next
+        date matching weekday/time from now.
+        """
+        from utils import WEEKDAY_ORDER, campus_now
+        if self.starts_at is not None:
+            return self.starts_at
+        now = now or campus_now()
+        target = WEEKDAY_ORDER.get(self.weekday, 0)
+        try:
+            hour, minute = (int(p) for p in (self.time or "18:00").split(":")[:2])
+        except ValueError:
+            hour, minute = 18, 0
+        days_ahead = (target - now.weekday()) % 7
+        candidate = (now + timedelta(days=days_ahead)).replace(
+            hour=hour, minute=minute, second=0, microsecond=0
+        )
+        if candidate < now:
+            candidate += timedelta(days=7)
+        return candidate
+
+    def is_past(self, now=None):
+        from utils import campus_now
+        if self.starts_at is None:
+            return False
+        now = now or campus_now()
+        return (self.ends_at or self.starts_at) < now
+
+    @property
+    def when_primary(self):
+        """Headline line: 'Thursday, September 3' or 'Mondays' for weekly."""
+        from utils import campus_now
+        if self.is_recurring:
+            return f"{self.weekday}s"
+        text = self.starts_at.strftime("%A, %B %d").replace(" 0", " ")
+        if self.starts_at.year != campus_now().year:
+            text += f", {self.starts_at.year}"
+        return text
+
+    @property
+    def when_secondary(self):
+        """Support line: '5:00 PM – 7:00 PM' or '6:00 PM · weekly'."""
+        def fmt(dt):
+            return dt.strftime("%I:%M %p").lstrip("0")
+        if self.is_recurring:
+            try:
+                hour, minute = (int(p) for p in (self.time or "18:00").split(":")[:2])
+                shown = fmt(datetime(2000, 1, 1, hour, minute))
+            except ValueError:
+                shown = self.time
+            return f"{shown} · weekly"
+        text = fmt(self.starts_at)
+        if self.ends_at:
+            text += f" – {fmt(self.ends_at)}"
+        return text
+
+    @property
+    def date_tile(self):
+        """The Luma-style mini calendar tile: ('SEP', '3')."""
+        occ = self.next_occurrence()
+        return occ.strftime("%b").upper(), str(occ.day)
+
+    @property
+    def hue(self):
+        # Stable per-club hue drives the tinted page theme (golden-angle
+        # spacing keeps neighboring ids visually distinct).
+        return self.club.hue if self.club else 265
 
     # attendee_count is a SQL column_property (defined at the bottom of this
     # module); these two derive from it.

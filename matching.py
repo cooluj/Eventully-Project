@@ -35,9 +35,11 @@ def smart_match_clubs(clubs, categories, major="", time_commitment=""):
     matches = []
     categories = set(categories or [])
 
+    # No preferences yet: an honest browse list, not a fabricated uniform
+    # "50% match" — score None tells templates to hide the match bar.
     if not categories and not major:
         for club in sorted(clubs, key=lambda c: (-c.member_count, c.name)):
-            matches.append({"club": club, "score": 50, "reasons": ["Browse all UW clubs"], "badge": None})
+            matches.append({"club": club, "score": None, "reasons": [], "badge": None})
         return matches
 
     for club in clubs:

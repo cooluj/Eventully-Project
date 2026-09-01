@@ -35,6 +35,66 @@ def _parse_capacity(raw, fallback):
         return fallback
 
 
+def _clean_image_url(raw):
+    """http(s) URL, "" when blank, None when rejected — image_url lands in a
+    style attribute, so any other scheme is stored CSS/URL injection."""
+    url = (raw or "").strip()
+    if not url:
+        return ""
+    scheme = urlparse(url).scheme.lower()
+    if scheme in ("http", "https"):
+        return url
+    return None
+
+
+def _parse_event_schedule(form, fallback_event=None):
+    """Read the schedule fields from an event form.
+
+    Returns (fields, error): fields is a dict with weekday/time/starts_at/
+    ends_at ready to assign. Weekly events keep starts_at NULL; one-time
+    events also derive weekday/time so day filters and legacy displays work.
+    Forms without a `schedule` field (legacy/tests) behave as weekly.
+    """
+    from datetime import datetime, timedelta
+
+    schedule = form.get("schedule", "weekly")
+    weekday = form.get("weekday") or (fallback_event.weekday if fallback_event else "Monday")
+    if weekday not in WEEKDAYS:
+        weekday = "Monday"
+    time_raw = form.get("time") or (fallback_event.time if fallback_event else "18:00")
+    try:
+        hour, minute = (int(p) for p in time_raw.split(":")[:2])
+        assert 0 <= hour < 24 and 0 <= minute < 60
+    except (ValueError, AssertionError):
+        return None, "That start time doesn't look right."
+    time_str = f"{hour:02d}:{minute:02d}"
+
+    if schedule != "once":
+        return {"weekday": weekday, "time": time_str, "starts_at": None, "ends_at": None}, None
+
+    try:
+        day = datetime.strptime(form.get("date", ""), "%Y-%m-%d").date()
+    except ValueError:
+        return None, "Pick a date for a one-time event."
+    starts_at = datetime(day.year, day.month, day.day, hour, minute)
+    ends_at = None
+    end_raw = (form.get("end_time") or "").strip()
+    if end_raw:
+        try:
+            eh, em = (int(p) for p in end_raw.split(":")[:2])
+            ends_at = datetime(day.year, day.month, day.day, eh, em)
+            if ends_at <= starts_at:
+                ends_at += timedelta(days=1)  # crosses midnight
+        except ValueError:
+            return None, "That end time doesn't look right."
+    return {
+        "weekday": starts_at.strftime("%A"),
+        "time": time_str,
+        "starts_at": starts_at,
+        "ends_at": ends_at,
+    }, None
+
+
 def owns_club(view):
     @wraps(view)
     def wrapped(club_id, *args, **kwargs):
@@ -84,25 +144,32 @@ def edit_club(club):
 @owns_club
 def new_event(club):
     if request.method == "POST":
-        event = Event(
-            club_id=club.id,
-            name=request.form.get("name", "").strip(),
-            description=request.form.get("description", "").strip(),
-            weekday=request.form.get("weekday", "Monday"),
-            time=request.form.get("time", "18:00"),
-            location=request.form.get("location", "").strip() or "TBD",
-            image_url=request.form.get("image_url", "").strip(),
-            capacity=_parse_capacity(request.form.get("capacity"), 50),
-            is_public=bool(request.form.get("is_public")),
-            created_by=current_user.id,
-        )
-        if not event.name:
+        schedule, schedule_error = _parse_event_schedule(request.form)
+        image_url = _clean_image_url(request.form.get("image_url", ""))
+        name = request.form.get("name", "").strip()
+        if not name:
             flash("Give the event a name.", "error")
-            return render_template("event_form.html", club=club, event=None, weekdays=WEEKDAYS)
-        db.session.add(event)
-        db.session.commit()
-        flash(f"{event.name} has been posted.", "success")
-        return redirect(url_for("officer.dashboard"))
+        elif schedule_error:
+            flash(schedule_error, "error")
+        elif image_url is None:
+            flash("Image must be a normal http(s) link.", "error")
+        else:
+            event = Event(
+                club_id=club.id,
+                name=name,
+                description=request.form.get("description", "").strip(),
+                location=request.form.get("location", "").strip() or "TBD",
+                image_url=image_url,
+                capacity=_parse_capacity(request.form.get("capacity"), 50),
+                is_public=bool(request.form.get("is_public")),
+                created_by=current_user.id,
+                **schedule,
+            )
+            db.session.add(event)
+            db.session.commit()
+            flash(f"{event.name} has been posted.", "success")
+            return redirect(url_for("officer.dashboard"))
+        return render_template("event_form.html", club=club, event=None, weekdays=WEEKDAYS)
 
     return render_template("event_form.html", club=club, event=None, weekdays=WEEKDAYS)
 
@@ -115,12 +182,22 @@ def edit_event(event_id):
         abort(403)
 
     if request.method == "POST":
+        schedule, schedule_error = _parse_event_schedule(request.form, fallback_event=event)
+        image_url = _clean_image_url(request.form.get("image_url", ""))
+        if schedule_error:
+            flash(schedule_error, "error")
+            return render_template("event_form.html", club=event.club, event=event, weekdays=WEEKDAYS)
+        if image_url is None:
+            flash("Image must be a normal http(s) link.", "error")
+            return render_template("event_form.html", club=event.club, event=event, weekdays=WEEKDAYS)
         event.name = request.form.get("name", "").strip() or event.name
         event.description = request.form.get("description", "").strip()
-        event.weekday = request.form.get("weekday", event.weekday)
-        event.time = request.form.get("time", event.time)
+        event.weekday = schedule["weekday"]
+        event.time = schedule["time"]
+        event.starts_at = schedule["starts_at"]
+        event.ends_at = schedule["ends_at"]
         event.location = request.form.get("location", "").strip() or "TBD"
-        event.image_url = request.form.get("image_url", "").strip()
+        event.image_url = image_url
         event.capacity = _parse_capacity(request.form.get("capacity"), event.capacity)
         event.is_public = bool(request.form.get("is_public"))
         db.session.commit()

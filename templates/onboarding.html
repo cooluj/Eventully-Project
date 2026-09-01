@@ -7,7 +7,7 @@
   <h2 style="margin-top:10px;">A few questions before we match you</h2>
   <p class="muted">This takes about 30 seconds. You can change these anytime.</p>
 
-  <form method="POST" action="{{ url_for('main.onboarding') }}" class="panel" style="margin-top:24px;">
+  <form method="POST" action="{{ url_for('main.onboarding') }}" class="panel" style="margin-top:24px;" id="onboarding-form">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field">
@@ -50,7 +50,21 @@
       </div>
     </div>
 
-    <button type="submit" class="btn btn-gold btn-block">Show me my matches</button>
+    <button type="submit" class="btn btn-brand btn-block">Show me my matches</button>
+    <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost btn-block" style="margin-top:0.5rem;">Skip for now — just browse</a>
   </form>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById("onboarding-form").addEventListener("submit", function (e) {
+    var any = this.querySelectorAll('input[name="categories"]:checked').length > 0;
+    var major = this.querySelector('select[name="major"]').value;
+    if (!any && !major) {
+      e.preventDefault();
+      alert("Pick at least one interest (or your major) so your matches mean something — or use Skip to just browse.");
+    }
+  });
+</script>
 {% endblock %}

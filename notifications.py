@@ -11,11 +11,31 @@ def _serializer():
 
 
 def make_email_token(user, purpose):
-    return _serializer().dumps({"uid": user.id, "email": user.email}, salt=purpose)
+    # The pw fingerprint binds the token to the current password, so a used
+    # (or otherwise stale) reset link dies the moment the password changes.
+    return _serializer().dumps(
+        {"uid": user.id, "email": user.email, "pw": (user.password_hash or "")[-12:]},
+        salt=purpose,
+    )
 
 
 def load_email_token(token, purpose, max_age=86400):
     return _serializer().loads(token, salt=purpose, max_age=max_age)
+
+
+def token_matches_user(data, user, require_fingerprint=False):
+    """Shared token→user validation, including the password fingerprint.
+
+    Reset links pass require_fingerprint=True so a link dies once the
+    password changes (i.e. after it's been used). Verify links only prove
+    mailbox ownership, so a missing fingerprint is tolerated there.
+    """
+    if not user or user.email != data.get("email"):
+        return False
+    fingerprint = data.get("pw")
+    if fingerprint is None:
+        return not require_fingerprint
+    return fingerprint == (user.password_hash or "")[-12:]
 
 
 def send_email(to_email, subject, body):

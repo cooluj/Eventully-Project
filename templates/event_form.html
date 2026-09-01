@@ -2,30 +2,57 @@
 {% block title %}{{ 'Edit event' if event else 'Post an event' }}{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <form class="form-card" method="POST" style="max-width:560px;">
+<section class="section container-narrow">
+  <form class="card form-card" method="POST" style="max-width:560px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <span class="eyebrow">{{ club.name }}</span>
-    <h2 style="margin-top:10px;">{{ 'Edit event' if event else 'Post a new event' }}</h2>
+    <h2 style="margin-top:0.25rem;">{{ 'Edit event' if event else 'Post a new event' }}</h2>
 
     <div class="field">
       <label for="name">Event name</label>
-      <input type="text" id="name" name="name" value="{{ event.name if event else '' }}" required>
+      <input type="text" id="name" name="name" value="{{ event.name if event else '' }}" required placeholder="e.g. Beginner Bouldering Session">
     </div>
     <div class="field">
       <label for="description">Description</label>
-      <textarea id="description" name="description" rows="4">{{ event.description if event else '' }}</textarea>
+      <textarea id="description" name="description" rows="5" placeholder="What happens, who it's for, what to bring.">{{ event.description if event else '' }}</textarea>
     </div>
-    <div class="field">
-      <label for="weekday">Day</label>
+
+    {% set is_once = event and not event.is_recurring %}
+    <div class="radio-cards" role="radiogroup" aria-label="Schedule type">
+      <label class="radio-card">
+        <input type="radio" name="schedule" value="once" {{ 'checked' if is_once or not event }} data-schedule="once">
+        <strong>One-time</strong>
+        <span>A specific date</span>
+      </label>
+      <label class="radio-card">
+        <input type="radio" name="schedule" value="weekly" {{ 'checked' if event and event.is_recurring }} data-schedule="weekly">
+        <strong>Weekly</strong>
+        <span>Repeats every week</span>
+      </label>
+    </div>
+
+    <div class="schedule-fields" id="once-fields" style="margin-bottom:1rem;">
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" value="{{ event.starts_at.strftime('%Y-%m-%d') if is_once else '' }}">
+      </div>
+      <div class="field">
+        <label for="end_time">End time <span class="muted" style="font-weight:400;">(optional)</span></label>
+        <input type="time" id="end_time" name="end_time" value="{{ event.ends_at.strftime('%H:%M') if is_once and event.ends_at else '' }}">
+      </div>
+    </div>
+
+    <div class="field" id="weekly-fields">
+      <label for="weekday">Day of the week</label>
       <select id="weekday" name="weekday">
         {% for d in weekdays %}
           <option value="{{ d }}" {{ 'selected' if event and event.weekday == d }}>{{ d }}</option>
         {% endfor %}
       </select>
     </div>
+
     <div class="field">
-      <label for="time">Time</label>
+      <label for="time">Start time</label>
       <input type="time" id="time" name="time" value="{{ event.time if event else '18:00' }}">
     </div>
     <div class="field">
@@ -37,16 +64,35 @@
       <input type="number" id="capacity" name="capacity" min="1" value="{{ event.capacity if event else 50 }}">
     </div>
     <div class="field">
-      <label for="image_url">Image URL <span class="muted" style="font-weight:400;">(optional)</span></label>
-      <input type="text" id="image_url" name="image_url" value="{{ event.image_url if event else '' }}">
+      <label for="image_url">Cover image URL <span class="muted" style="font-weight:400;">(optional — square images look best)</span></label>
+      <input type="text" id="image_url" name="image_url" value="{{ event.image_url if event else '' }}" placeholder="https://…">
     </div>
     <div class="field checkbox-row">
       <input type="checkbox" id="is_public" name="is_public" {{ 'checked' if not event or event.is_public }}>
       <label for="is_public" style="margin:0;">Open to all students (uncheck for members-only)</label>
     </div>
 
-    <button type="submit" class="btn btn-gold btn-block">{{ 'Save changes' if event else 'Post event' }}</button>
-    <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-block" style="margin-top:8px;">Cancel</a>
+    <button type="submit" class="btn btn-brand btn-block">{{ 'Save changes' if event else 'Post event' }}</button>
+    <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-block" style="margin-top:0.5rem;">Cancel</a>
   </form>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var once = document.getElementById("once-fields");
+    var weekly = document.getElementById("weekly-fields");
+    function sync() {
+      var mode = document.querySelector('input[name="schedule"]:checked');
+      var isOnce = mode && mode.value === "once";
+      once.hidden = !isOnce;
+      weekly.hidden = isOnce;
+    }
+    document.querySelectorAll('input[name="schedule"]').forEach(function (r) {
+      r.addEventListener("change", sync);
+    });
+    sync();
+  })();
+</script>
 {% endblock %}

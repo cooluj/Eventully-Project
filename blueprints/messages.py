@@ -88,7 +88,11 @@ def thread(club_id):
         message = ClubMessage(club_id=club.id, sender_id=current_user.id, body=body)
         db.session.add(message)
         db.session.commit()
-        send_new_message_email(message)
+        # Email fan-out only for officer posts (announcements). Member
+        # chatter emailing every member of a 200-person club is a spam
+        # machine — and a fast track to a blocklisted sending domain.
+        if club.can_manage(current_user):
+            send_new_message_email(message)
         flash("Message sent.", "success")
         return redirect(url_for("messages.thread", club_id=club.id))
 

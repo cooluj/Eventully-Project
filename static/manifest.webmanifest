@@ -1,0 +1,14 @@
+{
+  "name": "Eventully — UW clubs & events",
+  "short_name": "Eventully",
+  "description": "Every UW club, the events they're hosting, and the people behind them.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f8f8",
+  "theme_color": "#64308b",
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

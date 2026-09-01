@@ -4,7 +4,7 @@ from sqlalchemy import func
 
 from extensions import db
 from matching import MAJORS, smart_match_clubs
-from utils import WEEKDAY_ORDER, event_sort_key
+from utils import campus_now, event_sort_key, group_events_by_day, parse_page, split_upcoming
 from models import Club, Event, Membership, UserPreference
 
 bp = Blueprint("main", __name__)
@@ -28,9 +28,10 @@ def index():
         .order_by(func.count(Club.id).desc())
         .all()
     )
+    public_events, _ = split_upcoming(Event.query.filter(Event.is_public.is_(True)).all())
     stats = {
         "total_clubs": Club.query.count(),
-        "total_events": Event.query.count(),
+        "total_events": len(public_events),
         "categories": len(category_counts),
         "top_categories": dict(category_counts[:8]),
     }
@@ -83,7 +84,7 @@ def recommendations():
     all_clubs = [c for c in Club.query.all() if c.id not in hidden]
     all_matches = smart_match_clubs(all_clubs, prefs.category_list(), prefs.major, prefs.time_commitment)
 
-    page = int(request.args.get("page", 0))
+    page = parse_page(request.args.get("page"))
     per_page = current_app.config["MATCHES_PER_PAGE"]
     start, end = page * per_page, page * per_page + per_page
     matches = all_matches[start:end]
@@ -109,25 +110,20 @@ def dashboard():
     user_clubs = [m.club for m in memberships]
     user_club_ids = {c.id for c in user_clubs}
 
-    # Events the user has RSVP'd to, soonest weekday first
-    my_events = sorted(
-        (r.event for r in current_user.rsvps),
-        key=lambda e: (WEEKDAY_ORDER.get(e.weekday, 7), e.time),
-    )
+    # Events the user has RSVP'd to, soonest first (past one-offs excluded)
+    my_events, _ = split_upcoming(r.event for r in current_user.rsvps)
 
     # Events from the user's clubs they haven't RSVP'd to yet
     rsvp_ids = {r.event_id for r in current_user.rsvps}
     club_events = (
-        sorted(
-            Event.query.filter(Event.club_id.in_(user_club_ids), ~Event.id.in_(rsvp_ids)).all(),
-            key=event_sort_key,
-        )[:3]
+        split_upcoming(
+            Event.query.filter(Event.club_id.in_(user_club_ids), ~Event.id.in_(rsvp_ids)).all()
+        )[0][:3]
     ) if user_club_ids else []
 
-    featured_events = sorted(
-        Event.query.filter(Event.is_public.is_(True), ~Event.id.in_(rsvp_ids)).all(),
-        key=event_sort_key,
-    )[:6]
+    featured_events = split_upcoming(
+        Event.query.filter(Event.is_public.is_(True), ~Event.id.in_(rsvp_ids)).all()
+    )[0][:6]
 
     # A taste of the matcher: top 3 unjoined matches
     suggestions = []
@@ -178,6 +174,7 @@ def dashboard():
         suggestions=suggestions,
         starter_clubs=starter_clubs,
         saved_ids=saved_ids,
+        rsvp_ids=rsvp_ids,
         stats=stats,
         has_preferences=current_user.preferences is not None,
     )
@@ -195,17 +192,19 @@ def about():
 @bp.route("/calendar")
 @login_required
 def calendar():
-    from utils import WEEKDAYS
+    from datetime import timedelta
     user_club_ids = current_user.joined_club_ids
-    events = sorted(
-        Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids))).all(),
-        key=event_sort_key,
+    upcoming, _ = split_upcoming(
+        Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids))).all()
     )
-    by_day = {day: [] for day in WEEKDAYS}
-    for event in events:
-        by_day.setdefault(event.weekday, []).append(event)
+    now = campus_now()
+    week = []
+    for offset in range(7):
+        day = (now + timedelta(days=offset)).date()
+        todays = [e for e in upcoming if e.next_occurrence(now).date() == day]
+        week.append((day, todays))
     rsvp_ids = {r.event_id for r in current_user.rsvps}
-    return render_template("calendar.html", by_day=by_day, weekdays=WEEKDAYS, rsvp_ids=rsvp_ids)
+    return render_template("calendar.html", week=week, today=now.date(), rsvp_ids=rsvp_ids)
 
 
 @bp.route("/search")

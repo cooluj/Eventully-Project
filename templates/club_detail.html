@@ -1,97 +1,118 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, club_card, event_card with context %}
+{% from "_macros.html" import icon, club_tile, club_card, event_row, timeline with context %}
 {% block title %}{{ club.name }}{% endblock %}
 
+{% block meta %}
+  <meta name="description" content="{{ (club.description or club.name)[:160] }}">
+  <meta property="og:title" content="{{ club.name }} · Eventully">
+  <meta property="og:description" content="{{ club.category }} club at UW{% if club.description %} — {{ club.description[:140] }}{% endif %}">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
+  <meta name="twitter:card" content="summary">
+{% endblock %}
+
+{% block main_class %}tinted{% endblock %}
+{% block main_attrs %}style="--hue:{{ club.hue }};"{% endblock %}
+
 {% block content %}
-<section class="section container">
-  <div style="max-width:780px;">
-    <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px;">
-      <span class="avatar avatar-{{ club.id % 5 }}" style="width:56px; height:56px; font-size:1.5rem;">{{ club.avatar_letter }}</span>
-      <div>
-        <span class="badge badge-category">{{ club.category }}</span>
-        <h1 style="font-size:clamp(1.6rem,3.2vw,2.2rem); margin:4px 0 0;">{{ club.name }}</h1>
+<section class="container-narrow club-hero">
+  <div class="club-hero-top">
+    {{ club_tile(club, size="club-tile-lg") }}
+    <div style="flex:1; min-width:200px;">
+      <h1>{{ club.name }}</h1>
+      <div class="meta-line" style="margin-top:0.375rem;">
+        <span>{{ club.category }}</span>
+        {% if club.member_count %}<span>· {{ club.member_count }} member{{ 's' if club.member_count != 1 }}</span>{% endif %}
+        {% if club.is_claimed %}<span>· Run by {{ club.officer.name }}</span>{% endif %}
+        {% if club.updated_at %}<span>· Last updated: {{ club.updated_at|days_ago }}</span>{% endif %}
       </div>
-    </div>
-
-    <div class="pill-row" style="margin-bottom:16px;">
-      {% if club.is_claimed %}
-        <span class="badge badge-claimed">Officer: {{ club.officer.name }}</span>
-      {% else %}
-        <span class="badge badge-unclaimed">Unclaimed listing</span>
-      {% endif %}
-      {% if is_member %}<span class="badge badge-member">You're a member</span>{% endif %}
-      {% if is_officer %}<span class="badge badge-officer">You're the officer</span>{% endif %}
-      {% if club.updated_at %}<span class="card-updated">Last updated: {{ club.updated_at|days_ago }}</span>{% endif %}
-    </div>
-
-    <div class="icon-meta" style="font-size:0.9rem; margin-bottom:18px;">
-      <span>{{ icon("people") }} {{ club.member_count }} member{{ 's' if club.member_count != 1 }}</span>
-      {% if club.dues %}<span>{{ icon("dollar") }} {{ club.dues }}</span>{% endif %}
-      {% if club.hours_per_week %}<span>{{ icon("hourglass") }} {{ club.hours_per_week }}</span>{% endif %}
-      {% if club.meeting_info %}<span>{{ icon("calendar") }} {{ club.meeting_info }}</span>{% endif %}
-    </div>
-
-    <p style="font-size:1.02rem;">{{ club.description or "No description yet." }}</p>
-
-    {% if club.website or club.instagram or club.contact_email %}
-      <div class="pill-row" style="margin:16px 0;">
-        {% if club.website %}<a class="chip" href="{{ club.website }}" target="_blank" rel="noopener">🌐 Website</a>{% endif %}
-        {% if club.instagram %}<a class="chip" href="https://instagram.com/{{ club.instagram }}" target="_blank" rel="noopener">📷 @{{ club.instagram }}</a>{% endif %}
-        {% if club.contact_email %}<a class="chip" href="mailto:{{ club.contact_email }}">✉️ {{ club.contact_email }}</a>{% endif %}
-      </div>
-    {% endif %}
-
-    <div class="hero-actions" style="margin-top:22px;">
-      {% if not current_user.is_authenticated %}
-        <a href="{{ url_for('auth.login', next=request.path) }}" class="btn">Log in to join</a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-outline">Create an account</a>
-      {% elif is_member %}
-        <form method="POST" action="{{ url_for('clubs.leave', club_id=club.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-outline">Leave club</button>
-        </form>
-      {% else %}
-        <form method="POST" action="{{ url_for('clubs.join', club_id=club.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn">Join club</button>
-        </form>
-      {% endif %}
-
-      {% if current_user.is_authenticated %}
-      <form method="POST" action="{{ url_for('clubs.save', club_id=club.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-ghost">{{ "♥ Saved" if is_saved else "♡ Save for later" }}</button>
-      </form>
-      {% endif %}
-
-      {% if is_member or is_officer %}
-        <a href="{{ url_for('messages.thread', club_id=club.id) }}" class="btn btn-ghost">Message club</a>
-      {% endif %}
-
-      {% if is_officer %}
-        <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-outline">Manage listing</a>
-      {% elif current_user.is_authenticated and not club.is_claimed %}
-        {% if pending_claim %}
-          <span class="badge badge-unclaimed" style="padding:11px 18px;">Claim request pending review</span>
-        {% else %}
-          <a href="{{ url_for('clubs.claim', club_id=club.id) }}" class="btn btn-ghost">I'm an officer — claim this club</a>
-        {% endif %}
-      {% endif %}
     </div>
   </div>
 
-  {% if club.events %}
-    <div class="section-head" style="margin-top:48px;">
-      <h3 style="margin:0;">Events from {{ club.name }}</h3>
+  {% if club.description %}<p style="max-width:64ch;">{{ club.description }}</p>{% endif %}
+
+  <div class="pill-row">
+    {% if club.meeting_info %}<span class="chip">{{ icon("calendar") }} {{ club.meeting_info }}</span>{% endif %}
+    {% if club.dues %}<span class="chip">{{ icon("dollar") }} {{ club.dues }}</span>{% endif %}
+    {% if club.hours_per_week %}<span class="chip">{{ icon("hourglass") }} {{ club.hours_per_week }}</span>{% endif %}
+    {% if club.website %}<a class="chip" href="{{ club.website }}" target="_blank" rel="noopener">Website {{ icon("arrow-up-right") }}</a>{% endif %}
+    {% if club.instagram %}<a class="chip" href="https://instagram.com/{{ club.instagram }}" target="_blank" rel="noopener">@{{ club.instagram }}</a>{% endif %}
+    {% if club.contact_email %}<a class="chip" href="mailto:{{ club.contact_email }}">Email</a>{% endif %}
+  </div>
+
+  <div class="club-actions">
+    {% if not current_user.is_authenticated %}
+      <a href="{{ url_for('auth.login', next=request.path) }}" class="btn">Log in to join</a>
+      <a href="{{ url_for('auth.register', next=request.path) }}" class="btn btn-outline">Create an account</a>
+    {% elif is_member %}
+      <form method="POST" action="{{ url_for('clubs.leave', club_id=club.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline btn-pill">Joined ✓</button>
+      </form>
+    {% else %}
+      <form method="POST" action="{{ url_for('clubs.join', club_id=club.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-pill">Join club</button>
+      </form>
+    {% endif %}
+
+    {% if current_user.is_authenticated %}
+    <form method="POST" action="{{ url_for('clubs.save', club_id=club.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost btn-pill">{{ "♥ Saved" if is_saved else "♡ Save" }}</button>
+    </form>
+    {% endif %}
+
+    {% if is_member or is_officer %}
+      <a href="{{ url_for('messages.thread', club_id=club.id) }}" class="btn btn-ghost btn-pill">Messages</a>
+    {% endif %}
+
+    {% if is_officer %}
+      <a href="{{ url_for('officer.edit_club', club_id=club.id) }}" class="btn btn-outline btn-pill">Manage listing</a>
+    {% elif current_user.is_authenticated and not club.is_claimed %}
+      {% if pending_claim %}
+        <span class="badge badge-unclaimed" style="padding:0.5rem 1rem;">Claim pending review</span>
+      {% else %}
+        <a href="{{ url_for('clubs.claim', club_id=club.id) }}" class="btn btn-ghost btn-pill">I'm an officer — claim this club</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</section>
+
+<section class="container-narrow" style="padding-bottom:3rem;">
+  <div class="section-head" style="margin-top:2rem;">
+    <h2>Events</h2>
+  </div>
+  {% if upcoming_groups %}
+    {{ timeline(upcoming_groups) }}
+  {% else %}
+    <div class="empty-state card">
+      <span class="glyph">🗓️</span>
+      <h3>No upcoming events</h3>
+      {% if is_officer %}
+        <p>Post one — it takes a minute, and members get notified.</p>
+        <a href="{{ url_for('officer.new_event', club_id=club.id) }}" class="btn">Post an event</a>
+      {% elif club.is_claimed %}
+        <p>Check back soon — the officers post here first.</p>
+      {% else %}
+        <p>This listing is unclaimed. Are you an officer?</p>
+        {% if current_user.is_authenticated and not pending_claim %}
+          <a href="{{ url_for('clubs.claim', club_id=club.id) }}" class="btn btn-ghost">Claim {{ club.name }}</a>
+        {% endif %}
+      {% endif %}
     </div>
-    <div class="event-grid">
-      {% for event in club.events %}{{ event_card(event) }}{% endfor %}
+  {% endif %}
+
+  {% if past_events %}
+    <div class="section-head" style="margin-top:2rem;"><h2>Past events</h2></div>
+    <div style="display:flex; flex-direction:column; gap:0.75rem; opacity:0.7;">
+      {% for event in past_events[:6] %}{{ event_row(event, show_date=True) }}{% endfor %}
     </div>
   {% endif %}
 
   {% if similar_clubs %}
-    <div class="section-head" style="margin-top:48px;">
-      <h3 style="margin:0;">Other {{ club.category }} clubs</h3>
+    <div class="section-head" style="margin-top:2.5rem;">
+      <h2>Other {{ club.category }} clubs</h2>
       <a class="view-all" href="{{ url_for('clubs.browse', category=club.category) }}">View all →</a>
     </div>
     <div class="club-grid">
