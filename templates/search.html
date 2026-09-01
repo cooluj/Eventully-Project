@@ -17,7 +17,6 @@
   {% if q %}
     {% if not clubs and not events %}
       <div class="empty-state">
-        <span class="glyph">🔍</span>
         <h3>Nothing found for “{{ q }}”</h3>
         <p>Try a shorter keyword — club names don't always match what they do.</p>
         <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost">Browse all clubs</a>
@@ -41,7 +40,6 @@
     {% endif %}
   {% else %}
     <div class="empty-state">
-      <span class="glyph">🔍</span>
       <h3>What are you looking for?</h3>
       <p>Search all 1,200+ clubs and every upcoming event.</p>
     </div>

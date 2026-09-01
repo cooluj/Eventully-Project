@@ -3,20 +3,50 @@
 
 {% block content %}
 <section class="landing-hero">
-  <div class="container">
-    <span class="page-kicker">Every UW club, one place</span>
-    <h1>Find your people. Run your club.</h1>
-    <p class="hero-sub">Eventully is where UW's {{ stats.total_clubs }} registered student organizations and their events live — matched to what you actually care about.</p>
-    <div class="hero-actions">
-      <a href="{{ url_for('auth.register') }}" class="btn btn-brand">Find clubs</a>
-      <a href="{{ url_for('auth.register', next=url_for('clubs.browse', status='unclaimed')) }}" class="btn btn-outline">I run a club</a>
-      <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost">Just browse →</a>
+  <div class="container hero-grid">
+    <div>
+      <span class="page-kicker">Every UW club, one place</span>
+      <h1>Find your people. Run your club.</h1>
+      <p class="hero-sub">Eventully is where UW's {{ stats.total_clubs }} registered student organizations and their events live — matched to what you actually care about.</p>
+      <div class="hero-actions">
+        <a href="{{ url_for('auth.register') }}" class="btn btn-brand">Find clubs</a>
+        <a href="{{ url_for('auth.register', next=url_for('clubs.browse', status='unclaimed')) }}" class="btn btn-outline">I run a club</a>
+        <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost">Just browse →</a>
+      </div>
+      <div class="hero-stats" aria-label="Eventully platform stats">
+        <div><strong>{{ stats.total_clubs }}</strong><span>Clubs indexed</span></div>
+        <div><strong>{{ stats.categories }}</strong><span>Categories</span></div>
+        {% if stats.total_events %}<div><strong>{{ stats.total_events }}</strong><span>Upcoming events</span></div>{% endif %}
+        <div><strong>.edu</strong><span>Students only</span></div>
+      </div>
     </div>
-    <div class="hero-stats" aria-label="Eventully platform stats">
-      <div><strong>{{ stats.total_clubs }}</strong><span>Clubs indexed</span></div>
-      <div><strong>{{ stats.categories }}</strong><span>Categories</span></div>
-      {% if stats.total_events %}<div><strong>{{ stats.total_events }}</strong><span>Upcoming events</span></div>{% endif %}
-      <div><strong>.edu</strong><span>Students only</span></div>
+
+    <div class="hero-preview" aria-hidden="true">
+      <div class="card preview-tile" style="--hue:262;">
+        <span class="preview-art" style="--hue:262;"></span>
+        <span>
+          <small>Tonight · 6:30 PM</small>
+          <strong>Intro to ML Workshop</strong>
+          <em>CSE2 G001 · 12 spots left</em>
+        </span>
+      </div>
+      <div class="card preview-tile lift" style="--hue:340;">
+        <span class="preview-art" style="--hue:340;"></span>
+        <span>
+          <small>Sat · 2:00 PM</small>
+          <strong>Spring Championship</strong>
+          <em>IMA Field 1 · You're in ✓</em>
+        </span>
+      </div>
+      <div class="card preview-tile" style="--hue:199;">
+        <span class="preview-art" style="--hue:199;"></span>
+        <span>
+          <small>Thu · 7:00 PM</small>
+          <strong>Hack Night</strong>
+          <em>CSE 403 · 80 going</em>
+        </span>
+      </div>
+      <span class="date-tile preview-float"><span class="m">SEP</span><span class="d">24</span></span>
     </div>
   </div>
 </section>

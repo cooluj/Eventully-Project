@@ -40,7 +40,6 @@
 
   {% if not events %}
     <div class="empty-state">
-      <span class="glyph">🗓️</span>
       <h3>No upcoming events{% if current_category != 'all' or current_day != 'all' %} match those filters{% endif %}</h3>
       {% if current_category != 'all' or current_day != 'all' %}
         <p>Try a different day or category.</p>

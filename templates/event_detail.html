@@ -40,7 +40,7 @@
 <div class="event-page">
   <div class="event-page-left">
     <div class="event-cover {{ 'placeholder' if not event.image_url }}"
-         {% if event.image_url %}style="background-image:url('{{ event.image_url }}')"{% endif %}>
+         {% if event.image_url %}style="background-image:url('{{ event.image_url }}'), var(--cover-art)"{% endif %}>
       {%- if not event.image_url %}{{ event.club.avatar_letter }}{% endif -%}
     </div>
 

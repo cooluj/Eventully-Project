@@ -13,22 +13,12 @@
   </div>
 
   {% if not has_preferences %}
-    <div class="card setup-banner">
-      <div>
-        <span class="page-kicker">Recommended next</span>
-        <h3 style="margin:0 0 0.25rem;">Build your club shortlist</h3>
-        <p class="muted" style="margin:0;">Three quick questions, and we'll rank all 1,200+ clubs by your interests, major, and schedule.</p>
+    <div class="card setup-banner" style="align-items:center; padding:0.875rem 1.25rem;">
+      <div style="flex:1; min-width:240px;">
+        <strong style="font-weight:600;">Get matched to your clubs</strong>
+        <span class="muted" style="display:block; font-size:var(--text-sm);">Three quick questions rank all 1,200+ clubs by your interests, major, and schedule.</span>
       </div>
-      <div class="action-grid">
-        <a class="mini-action primary" href="{{ url_for('main.onboarding') }}">
-          <strong>Take the survey</strong>
-          <span>Personalize your matches</span>
-        </a>
-        <a class="mini-action" href="{{ url_for('clubs.browse') }}">
-          <strong>Explore clubs</strong>
-          <span>Browse the full directory</span>
-        </a>
-      </div>
+      <a class="btn" href="{{ url_for('main.onboarding') }}">Take the survey</a>
     </div>
   {% endif %}
 
@@ -72,7 +62,6 @@
 
       {% if not my_events and not club_events and not featured_events %}
         <div class="card empty-state">
-          <span class="glyph">🎉</span>
           <h3>No upcoming events yet</h3>
           <p>Events land here as clubs post them. Meanwhile, find your people:</p>
           <div class="hero-actions" style="justify-content:center;">

@@ -51,6 +51,7 @@
       </span>
       <span class="event-row-loc">{{ icon("pin") }} {{ event.location }}</span>
       <div class="event-row-meta">
+        {# A badge only when it carries signal — "Open" on everything is noise #}
         {% if rsvp_ids and event.id in rsvp_ids %}
           <span class="badge badge-member">You're in</span>
         {% elif event.remaining_spots == 0 %}
@@ -59,14 +60,12 @@
           <span class="badge badge-full">Near capacity</span>
         {% elif not event.is_public %}
           <span class="badge badge-category">Members</span>
-        {% else %}
-          <span class="badge badge-free">Open</span>
         {% endif %}
         {{ attendee_stack(event) }}
       </div>
     </div>
     <span class="event-row-thumb {{ 'placeholder' if not event.image_url }}"
-          {% if event.image_url %}style="background-image:url('{{ event.image_url }}')"{% endif %}>
+          {% if event.image_url %}style="background-image:url('{{ event.image_url }}'), var(--cover-art)"{% endif %}>
       {%- if not event.image_url %}{{ event.club.avatar_letter }}{% endif -%}
     </span>
   </a>

@@ -156,11 +156,14 @@ class Club(db.Model):
     def avatar_letter(self):
         return (self.name or "?")[0].upper()
 
+    # Curated hues only — a random 0-360 spin lands on swampy yellow-greens
+    # and washed mints that read as broken. Every value here holds up as a
+    # page tint, an avatar gradient, and a button.
+    HUE_PALETTE = (262, 292, 222, 199, 178, 340, 16, 260)
+
     @property
     def hue(self):
-        # Stable hue for the club's tinted pages and avatar. Golden-angle
-        # spacing so adjacent ids land far apart on the color wheel.
-        return ((self.id or 0) * 137) % 360
+        return self.HUE_PALETTE[(self.id or 0) % len(self.HUE_PALETTE)]
 
 
 class Membership(db.Model):
