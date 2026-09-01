@@ -64,5 +64,9 @@ class Config:
     # this one, so the .onrender.com URL doesn't live a parallel life.
     CANONICAL_HOST = os.environ.get("CANONICAL_HOST", "").strip().lower()
 
+    # Shared secret for the /tasks/* scheduled-job endpoints (digest,
+    # reminders). Unset = those endpoints 404.
+    TASKS_TOKEN = os.environ.get("TASKS_TOKEN", "")
+
     CLUBS_PER_PAGE = 24
     MATCHES_PER_PAGE = 20

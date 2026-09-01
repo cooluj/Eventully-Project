@@ -34,6 +34,7 @@ def create_app(config_class=Config):
     from blueprints.messages import bp as messages_bp
     from blueprints.officer import bp as officer_bp
     from blueprints.admin import bp as admin_bp
+    from blueprints.tasks import bp as tasks_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -42,6 +43,7 @@ def create_app(config_class=Config):
     app.register_blueprint(messages_bp)
     app.register_blueprint(officer_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(tasks_bp)
 
     @app.template_filter("days_ago")
     def days_ago(dt):
@@ -86,6 +88,39 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_demo_flag():
         return {"show_demo_login": app.config["SEED_DEMO_ACCOUNT"]}
+
+    @app.context_processor
+    def inject_nav_badges():
+        """Unread counts for the nav bell and Messages link."""
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            return {"unread_notifications": 0, "unread_threads": 0}
+        from sqlalchemy import func
+        from models import ClubMessage, Notification, ThreadRead
+        unread_notifications = Notification.query.filter_by(
+            user_id=current_user.id, read_at=None
+        ).count()
+        club_ids = current_user.joined_club_ids | current_user.managed_club_ids
+        unread_threads = 0
+        if club_ids:
+            markers = {
+                tr.club_id: tr.last_read_at
+                for tr in ThreadRead.query.filter_by(user_id=current_user.id).all()
+            }
+            latest = (
+                db.session.query(ClubMessage.club_id, func.max(ClubMessage.created_at))
+                .filter(ClubMessage.club_id.in_(club_ids), ClubMessage.sender_id != current_user.id)
+                .group_by(ClubMessage.club_id)
+                .all()
+            )
+            unread_threads = sum(
+                1 for club_id, newest in latest
+                if markers.get(club_id) is None or newest > markers[club_id]
+            )
+        return {
+            "unread_notifications": unread_notifications,
+            "unread_threads": unread_threads,
+        }
 
     @app.errorhandler(404)
     def not_found(e):
@@ -160,6 +195,10 @@ def bootstrap_database(app):
             add_missing_columns(app)
         except Exception:
             app.logger.exception("Column migration failed; continuing.")
+        try:
+            add_missing_indexes(app)
+        except Exception:
+            app.logger.exception("Index migration failed; continuing.")
         from seed import seed_clubs
         try:
             seed_clubs()
@@ -189,6 +228,21 @@ def add_missing_columns(app):
             with db.engine.begin() as conn:
                 conn.execute(db.text(ddl))
             app.logger.info("Added column %s.%s", table.name, column.name)
+
+
+def add_missing_indexes(app):
+    """Create model-declared indexes that don't exist yet (create_all only
+    builds indexes for brand-new tables, never for existing ones)."""
+    inspector = db.inspect(db.engine)
+    for table in db.metadata.sorted_tables:
+        if not inspector.has_table(table.name):
+            continue
+        existing = {ix["name"] for ix in inspector.get_indexes(table.name)}
+        for index in table.indexes:
+            if index.name in existing:
+                continue
+            index.create(db.engine)
+            app.logger.info("Created index %s on %s", index.name, table.name)
 
 
 app = create_app()

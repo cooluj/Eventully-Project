@@ -61,6 +61,22 @@ def browse():
     )
 
 
+@bp.route("/claim")
+def claim_landing():
+    """Outreach landing for officers: the pitch plus the unclaimed directory.
+    QR codes and DMs point here during recruitment pushes."""
+    unclaimed_count = Club.query.filter(Club.officer_id.is_(None)).count()
+    sample = (
+        Club.query.filter(Club.officer_id.is_(None))
+        .join(Membership, isouter=True)
+        .group_by(Club.id)
+        .order_by(db.func.count(Membership.id).desc(), Club.name)
+        .limit(6)
+        .all()
+    )
+    return render_template("claim_landing.html", unclaimed_count=unclaimed_count, sample=sample)
+
+
 @bp.route("/club/<int:club_id>")
 def detail(club_id):
     club = Club.query.get_or_404(club_id)
@@ -76,8 +92,9 @@ def detail(club_id):
 
     visible_events = [
         e for e in club.events
-        if e.is_public or is_officer
-        or (current_user.is_authenticated and club.id in current_user.joined_club_ids)
+        if not e.is_cancelled
+        and (e.is_public or is_officer
+             or (current_user.is_authenticated and club.id in current_user.joined_club_ids))
     ]
     upcoming, past = split_upcoming(visible_events)
 

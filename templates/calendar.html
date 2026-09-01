@@ -12,6 +12,16 @@
     <a href="{{ url_for('events.browse') }}" class="btn btn-ghost">All events</a>
   </div>
 
+  {% if feed_url %}
+  <div class="card" style="padding:0.875rem 1rem; margin-bottom:1.25rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+    <div style="flex:1; min-width:220px;">
+      <strong style="font-weight:500;">Live in your own calendar</strong>
+      <span class="muted" style="display:block; font-size:var(--text-sm);">Subscribe once and every event you register for shows up in Google/Apple Calendar automatically.</span>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" id="copy-feed" data-url="{{ feed_url }}">Copy calendar link</button>
+  </div>
+  {% endif %}
+
   <div class="week-list">
     {% for day, day_events in week %}
       <div class="card" style="padding:0.875rem 1rem;">
@@ -35,4 +45,16 @@
     {% endfor %}
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var copyBtn = document.getElementById("copy-feed");
+  if (copyBtn) copyBtn.addEventListener("click", function () {
+    navigator.clipboard.writeText(copyBtn.dataset.url).then(function () {
+      copyBtn.textContent = "Copied — paste into your calendar app";
+      setTimeout(function () { copyBtn.textContent = "Copy calendar link"; }, 3000);
+    });
+  });
+</script>
 {% endblock %}

@@ -45,6 +45,11 @@ def settings():
                 db.session.commit()
                 flash("Profile updated.", "success")
 
+        elif form == "notifications":
+            current_user.digest_opt_out = not request.form.get("weekly_digest")
+            db.session.commit()
+            flash("Notification preferences saved.", "success")
+
         elif form == "password":
             current = request.form.get("current_password", "")
             new = request.form.get("new_password", "")

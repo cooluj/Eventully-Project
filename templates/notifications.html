@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<section class="app-page container-narrow" style="max-width:640px;">
+  <div class="page-hero">
+    <div>
+      <h1>Notifications</h1>
+      <p>Event updates from your clubs, claim decisions, and reminders.</p>
+    </div>
+  </div>
+
+  {% if not items %}
+    <div class="empty-state card">
+      <span class="glyph">🔔</span>
+      <h3>Nothing yet</h3>
+      <p>Join clubs and register for events — updates land here.</p>
+      <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost">Browse clubs</a>
+    </div>
+  {% else %}
+    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+      {% for n in items %}
+        <a class="card hoverable notif-row {{ 'unread' if n.id in unread_ids }}" href="{{ n.link or url_for('main.dashboard') }}">
+          <span class="notif-dot" aria-hidden="true"></span>
+          <span style="flex:1; min-width:0;">
+            <strong>{{ n.title }}</strong>
+            {% if n.body %}<span class="notif-body">{{ n.body }}</span>{% endif %}
+            <small class="muted">{{ n.created_at|days_ago }}</small>
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

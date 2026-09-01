@@ -106,18 +106,15 @@ def build_calendar_link(event):
     return f"https://calendar.google.com/calendar/u/0/r/eventedit?{urlencode(params, quote_via=quote_plus)}"
 
 
-def build_ics(event):
-    """iCalendar file: real one-off dates, or a bounded weekly recurrence."""
+def _ics_escape(text):
+    return text.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
 
-    def esc(text):
-        return text.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
 
+def _ics_vevent_lines(event):
+    esc = _ics_escape
     start = event.next_occurrence()
     end = event.ends_at if (not event.is_recurring and event.ends_at) else start + timedelta(hours=1)
     lines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Eventully//UW Club Events//EN",
         "BEGIN:VEVENT",
         f"UID:eventully-event-{event.id}@eventully",
         f"DTSTART;TZID=America/Los_Angeles:{_gcal_stamp(start)}",
@@ -133,6 +130,31 @@ def build_ics(event):
         f"DESCRIPTION:{esc(event.description or '')}",
         f"LOCATION:{esc(event.location)}",
         "END:VEVENT",
+    ]
+    return lines
+
+
+def build_ics_feed(events, name="Eventully — my events"):
+    """A multi-event iCalendar feed (personal calendar subscription)."""
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Eventully//UW Club Events//EN",
+        f"X-WR-CALNAME:{_ics_escape(name)}",
+    ]
+    for event in events:
+        lines += _ics_vevent_lines(event)
+    lines += ["END:VCALENDAR", ""]
+    return "\r\n".join(lines)
+
+
+def build_ics(event):
+    """Single-event iCalendar file (the per-event download button)."""
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Eventully//UW Club Events//EN",
+        *_ics_vevent_lines(event),
         "END:VCALENDAR",
         "",
     ]

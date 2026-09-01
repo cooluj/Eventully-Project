@@ -54,7 +54,7 @@ def send_email(to_email, subject, body):
     message.set_content(body)
 
     try:
-        with smtplib.SMTP(server, current_app.config["MAIL_PORT"]) as smtp:
+        with smtplib.SMTP(server, current_app.config["MAIL_PORT"], timeout=10) as smtp:
             if current_app.config["MAIL_USE_TLS"]:
                 smtp.starttls()
             if current_app.config["MAIL_USERNAME"]:
@@ -106,6 +106,105 @@ def send_claim_decision_email(claim):
     return send_email(claim.requester.email, subject, body)
 
 
+def notify(user_id, kind, title, body="", link=""):
+    """Queue an in-app notification row (caller commits the session)."""
+    from extensions import db
+    from models import Notification
+    db.session.add(Notification(
+        user_id=user_id, kind=kind, title=title[:200], body=body[:500], link=link[:300]
+    ))
+
+
+def _email_batch_async(recipients, subject, body):
+    """Fire-and-forget batched email over one SMTP connection."""
+    if not recipients:
+        return
+    if not current_app.config.get("MAIL_SERVER"):
+        for email in recipients:
+            current_app.logger.info(
+                "Email not configured. To=%s Subject=%s Body=%s", email, subject, body
+            )
+        return
+    app = current_app._get_current_object()
+    threading.Thread(
+        target=_send_batch, args=(app, sorted(recipients), subject, body), daemon=True
+    ).start()
+
+
+def notify_new_event(event):
+    """Tell a club's members about a freshly posted event (in-app + email)."""
+    from flask import url_for
+    link = url_for("events.detail", event_id=event.id)
+    url = url_for("events.detail", event_id=event.id, _external=True)
+    title = f"{event.club.name} posted: {event.name}"
+    body = f"{event.when_primary}, {event.when_secondary} · {event.location}"
+    recipients = set()
+    for membership in event.club.memberships:
+        if membership.user_id == event.created_by:
+            continue
+        notify(membership.user_id, "event", title, body, link)
+        recipients.add(membership.user.email)
+    email_body = (
+        f"{event.club.name} just posted a new event on Eventully:\n\n"
+        f"{event.name}\n{body}\n\nDetails and registration:\n{url}"
+    )
+    _email_batch_async(recipients, title, email_body)
+
+
+def notify_event_cancelled(event):
+    """Tell everyone who registered that an event is off (in-app + email)."""
+    from flask import url_for
+    link = url_for("events.detail", event_id=event.id)
+    title = f"Cancelled: {event.name}"
+    body = f"{event.club.name} cancelled this event ({event.when_primary}, {event.when_secondary})."
+    recipients = set()
+    for rsvp in event.rsvps:
+        notify(rsvp.user_id, "cancelled", title, body, link)
+        recipients.add(rsvp.user.email)
+    email_body = (
+        f"Heads up — {event.club.name} cancelled an event you registered for:\n\n"
+        f"{event.name}\n{event.when_primary}, {event.when_secondary} · {event.location}\n\n"
+        "Sorry for the change of plans. Your other registrations are unaffected."
+    )
+    _email_batch_async(recipients, title, email_body)
+
+
+def send_personalized_batch(messages):
+    """Send many (to, subject, body) triples over one SMTP connection on a
+    background thread — for digests and reminders, where every body differs."""
+    if not messages:
+        return 0
+    if not current_app.config.get("MAIL_SERVER"):
+        for to_email, subject, _ in messages:
+            current_app.logger.info("Email not configured. To=%s Subject=%s", to_email, subject)
+        return 0
+    app = current_app._get_current_object()
+
+    def run():
+        with app.app_context():
+            try:
+                with smtplib.SMTP(app.config["MAIL_SERVER"], app.config["MAIL_PORT"], timeout=10) as smtp:
+                    if app.config["MAIL_USE_TLS"]:
+                        smtp.starttls()
+                    if app.config["MAIL_USERNAME"]:
+                        smtp.login(app.config["MAIL_USERNAME"], app.config["MAIL_PASSWORD"])
+                    for to_email, subject, body in messages:
+                        msg = EmailMessage()
+                        msg["From"] = app.config["MAIL_FROM"]
+                        msg["To"] = to_email
+                        msg["Subject"] = subject
+                        msg.set_content(body)
+                        try:
+                            smtp.send_message(msg)
+                        except smtplib.SMTPException:
+                            app.logger.exception("Failed to send to %s", to_email)
+            except Exception:
+                app.logger.exception("Personalized batch failed")
+
+    threading.Thread(target=run, daemon=True).start()
+    return len(messages)
+
+
 def send_new_message_email(message):
     """Notify club members/officers of a new message.
 
@@ -144,7 +243,7 @@ def send_new_message_email(message):
 def _send_batch(app, recipients, subject, body):
     with app.app_context():
         try:
-            with smtplib.SMTP(app.config["MAIL_SERVER"], app.config["MAIL_PORT"]) as smtp:
+            with smtplib.SMTP(app.config["MAIL_SERVER"], app.config["MAIL_PORT"], timeout=10) as smtp:
                 if app.config["MAIL_USE_TLS"]:
                     smtp.starttls()
                 if app.config["MAIL_USERNAME"]:

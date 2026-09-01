@@ -47,16 +47,21 @@
                 {% endif %}
               </span>
               <span class="thread-card-meta">
+                {% if item.unread %}<span class="nav-badge">{{ item.unread }}</span> unread{% endif %}
                 {% if item.is_officer %}<em>Officer</em>{% elif item.is_member %}<em>Member</em>{% endif %}
-                <span>{{ club.member_count }} member{{ 's' if club.member_count != 1 }}</span>
-                <span>{{ item.message_count }} message{{ 's' if item.message_count != 1 }}</span>
               </span>
             </span>
           </a>
         {% endfor %}
       </aside>
 
-      <section class="chat-panel" aria-label="Selected conversation">
+      <section class="chat-panel {{ 'chat-panel-empty' if not selected_club }}" aria-label="Selected conversation">
+        {% if not selected_club %}
+          <div class="thread-empty">
+            <strong>Pick a conversation</strong>
+            <span>Choose a club on the left to read and send messages.</span>
+          </div>
+        {% endif %}
         {% if selected_club %}
           <div class="chat-head">
             <span class="avatar avatar-{{ selected_club.id % 5 }}">{{ selected_club.avatar_letter }}</span>

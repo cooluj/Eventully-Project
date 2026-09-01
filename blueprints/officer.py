@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Club, ClubRole, Event, User
-from notifications import send_email
+from notifications import notify, notify_event_cancelled, notify_new_event, send_email
 from utils import WEEKDAYS
 
 bp = Blueprint("officer", __name__, url_prefix="/officer")
@@ -167,7 +167,9 @@ def new_event(club):
             )
             db.session.add(event)
             db.session.commit()
-            flash(f"{event.name} has been posted.", "success")
+            notify_new_event(event)
+            db.session.commit()
+            flash(f"{event.name} has been posted — members are being notified.", "success")
             return redirect(url_for("officer.dashboard"))
         return render_template("event_form.html", club=club, event=None, weekdays=WEEKDAYS)
 
@@ -207,12 +209,33 @@ def edit_event(event_id):
     return render_template("event_form.html", club=event.club, event=event, weekdays=WEEKDAYS)
 
 
+@bp.route("/event/<int:event_id>/cancel", methods=["POST"])
+@login_required
+def cancel_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    if not event.club.can_manage(current_user):
+        abort(403)
+    if event.is_cancelled:
+        flash("That event is already cancelled.", "info")
+        return redirect(url_for("officer.dashboard"))
+    event.status = "cancelled"
+    notify_event_cancelled(event)
+    db.session.commit()
+    flash(f"{event.name} is cancelled — everyone who registered is being notified.", "info")
+    return redirect(url_for("officer.dashboard"))
+
+
 @bp.route("/event/<int:event_id>/delete", methods=["POST"])
 @login_required
 def delete_event(event_id):
     event = Event.query.get_or_404(event_id)
     if not event.club.can_manage(current_user):
         abort(403)
+    # Deleting silently strands attendees; a live event must be cancelled
+    # (which notifies them) before it can be removed for good.
+    if not event.is_cancelled and event.attendee_count > 0:
+        flash("Cancel the event first so registered students get notified, then delete it.", "error")
+        return redirect(url_for("officer.dashboard"))
     name = event.name
     db.session.delete(event)
     db.session.commit()
@@ -265,6 +288,13 @@ def add_team_member(club):
         flash(f"{user.name} can now help manage {club.name}.", "success")
     db.session.commit()
 
+    notify(
+        user.id, "team",
+        f"You're now {role_name} for {club.name}",
+        f"{current_user.name} added you to the officer team.",
+        url_for("officer.dashboard"),
+    )
+    db.session.commit()
     send_email(
         user.email,
         f"You were added as an officer for {club.name}",

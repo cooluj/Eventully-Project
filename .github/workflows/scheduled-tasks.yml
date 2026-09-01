@@ -1,0 +1,27 @@
+# Fires Eventully's scheduled jobs over HTTPS. Requires the TASKS_TOKEN
+# repo secret to match the TASKS_TOKEN env var on the Render service —
+# until both are set, the endpoints 404 and these runs no-op harmlessly.
+# Note: GitHub disables scheduled workflows after 60 days without repo
+# activity — any push re-arms them.
+name: Scheduled tasks
+
+on:
+  schedule:
+    - cron: "0 15 * * *"   # daily 8am Pacific: day-of event reminders
+    - cron: "0 16 * * 0"   # Sunday 9am Pacific: weekly digest
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Day-of reminders (daily)
+        if: github.event.schedule == '0 15 * * *' || github.event_name == 'workflow_dispatch'
+        run: |
+          curl -fsS --max-time 60 --retry 2 \
+            "https://eventully.org/tasks/reminders?token=${{ secrets.TASKS_TOKEN }}" || true
+      - name: Weekly digest (Sundays only)
+        if: github.event.schedule == '0 16 * * 0' || github.event_name == 'workflow_dispatch'
+        run: |
+          curl -fsS --max-time 120 --retry 2 \
+            "https://eventully.org/tasks/digest?token=${{ secrets.TASKS_TOKEN }}" || true

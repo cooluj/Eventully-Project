@@ -4,10 +4,19 @@ from flask import Blueprint, abort, current_app, flash, redirect, render_templat
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Club, ClubMessage
+from models import Club, ClubMessage, ThreadRead
 from notifications import send_new_message_email
 
 bp = Blueprint("messages", __name__, url_prefix="/messages")
+
+
+def _mark_thread_read(club_id):
+    marker = ThreadRead.query.filter_by(user_id=current_user.id, club_id=club_id).first()
+    if marker:
+        marker.last_read_at = datetime.utcnow()
+    else:
+        db.session.add(ThreadRead(user_id=current_user.id, club_id=club_id))
+    db.session.commit()
 
 
 def _can_access_club_messages(club):
@@ -38,9 +47,25 @@ def _message_clubs():
         latest_by_club.setdefault(message.club_id, message)
         counts_by_club[message.club_id] = counts_by_club.get(message.club_id, 0) + 1
 
+    read_markers = {
+        tr.club_id: tr.last_read_at
+        for tr in ThreadRead.query.filter_by(user_id=current_user.id).all()
+    }
+
+    def unread_count(club):
+        last_read = read_markers.get(club.id)
+        return sum(
+            1 for m in latest_messages
+            if m.club_id == club.id and m.sender_id != current_user.id
+            and (last_read is None or m.created_at > last_read)
+        )
+
+    # Unread first, then most recent activity.
+    unread_by_club = {club.id: unread_count(club) for club in clubs}
+
     def sort_key(club):
         latest = latest_by_club.get(club.id)
-        return (latest.created_at if latest else datetime.min, club.name.lower())
+        return (unread_by_club[club.id] > 0, latest.created_at if latest else datetime.min, club.name.lower())
 
     clubs.sort(key=sort_key, reverse=True)
     return [
@@ -48,6 +73,7 @@ def _message_clubs():
             "club": club,
             "latest": latest_by_club.get(club.id),
             "message_count": counts_by_club.get(club.id, 0),
+            "unread": unread_by_club[club.id],
             "is_officer": club.can_manage(current_user),
             "is_member": club.id in current_user.joined_club_ids,
         }
@@ -58,12 +84,11 @@ def _message_clubs():
 @bp.route("/")
 @login_required
 def inbox():
-    conversations = _message_clubs()
-    if conversations:
-        return redirect(url_for("messages.thread", club_id=conversations[0]["club"].id))
+    # Render the list itself (no auto-redirect into the newest thread):
+    # on phones the list IS the page, and unread rows need to be seen.
     return render_template(
         "messages.html",
-        conversations=[],
+        conversations=_message_clubs(),
         selected_club=None,
         thread_messages=[],
     )
@@ -102,9 +127,11 @@ def thread(club_id):
         .order_by(ClubMessage.created_at.asc())
         .all()
     )
+    _mark_thread_read(club.id)
+    conversations = _message_clubs()
     return render_template(
         "messages.html",
-        conversations=_message_clubs(),
+        conversations=conversations,
         selected_club=club,
         thread_messages=thread_messages,
     )

@@ -37,6 +37,22 @@
   </div>
 
   <div class="panel" style="margin-top:20px;">
+    <h3 style="font-size:1.1rem;">Notifications & calendar</h3>
+    <form method="POST" action="{{ url_for('auth.settings') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="form" value="notifications">
+      <div class="field checkbox-row">
+        <input type="checkbox" id="digest" name="weekly_digest" {{ 'checked' if not current_user.digest_opt_out }}>
+        <label for="digest" style="margin:0;">Weekly email digest of your clubs' upcoming events</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Save</button>
+    </form>
+    <p class="hint" style="margin-top:0.75rem;">Your personal calendar feed lives on the
+      <a href="{{ url_for('main.calendar') }}">This week</a> page — subscribe once and your
+      registrations appear in Google/Apple Calendar automatically.</p>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
     <h3 style="font-size:1.1rem;">Match preferences</h3>
     <p class="muted" style="margin-bottom:14px;">Interests, major, and time commitment — these drive your club matches.</p>
     <a href="{{ url_for('main.onboarding') }}" class="btn btn-outline btn-sm">Edit preferences</a>

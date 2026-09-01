@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Club, ClubClaim, Event, RSVP
-from notifications import send_claim_decision_email, send_email
+from notifications import notify, send_claim_decision_email, send_email
 from production_checks import run_launch_checks
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -99,6 +99,16 @@ def approve(claim_id):
     claim.decision_note = request.form.get("decision_note", "").strip()
     claim.decided_by = current_user.id
     claim.decided_at = datetime.utcnow()
+    if claim.status == "approved":
+        notify(claim.user_id, "claim",
+               f"You're approved — {claim.club.name} is yours to run",
+               "Post events, edit the listing, and message members from your officer dashboard.",
+               url_for("officer.dashboard"))
+    else:
+        notify(claim.user_id, "claim",
+               f"Update on your claim for {claim.club.name}",
+               claim.decision_note or "Your claim wasn't approved this time.",
+               url_for("clubs.detail", club_id=claim.club_id))
     db.session.commit()
     send_claim_decision_email(claim)
     return redirect(url_for("admin.claims"))
@@ -114,6 +124,10 @@ def reject(claim_id):
         claim.decision_note = request.form.get("decision_note", "").strip()
         claim.decided_by = current_user.id
         claim.decided_at = datetime.utcnow()
+        notify(claim.user_id, "claim",
+               f"Update on your claim for {claim.club.name}",
+               claim.decision_note or "Your claim wasn't approved this time.",
+               url_for("clubs.detail", club_id=claim.club_id))
         db.session.commit()
         send_claim_decision_email(claim)
         flash("Claim rejected.", "info")

@@ -243,6 +243,22 @@ svg { width: 1em; height: 1em; stroke: currentColor; fill: none; vertical-align:
 
 .nav-search-link { display: none; }
 
+.nav-bell {
+  position: relative;
+  display: grid; place-items: center;
+  width: 34px; height: 34px; border-radius: var(--r-sm);
+  color: var(--tint-ink); flex-shrink: 0;
+}
+.nav-bell:hover { color: var(--ink); background: var(--overlay); }
+.nav-badge {
+  display: inline-grid; place-items: center;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--danger); color: #fff;
+  font-size: 0.625rem; font-weight: 600; line-height: 1;
+}
+.nav-bell .nav-badge { position: absolute; top: 2px; right: 0; }
+
 .nav-avatar {
   width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
   display: grid; place-items: center;
@@ -695,6 +711,16 @@ textarea { resize: vertical; min-height: 90px; }
 }
 .verification-banner form { display: flex; gap: 0.5rem; }
 
+/* ---------- Notifications ---------- */
+.notif-row { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.75rem 1rem; color: var(--ink); }
+.notif-row:hover { color: var(--ink); }
+.notif-row strong { display: block; font-weight: 500; line-height: var(--lh-tight); }
+.notif-row .notif-body { display: block; font-size: var(--text-sm); color: var(--ink-2); margin: 0.125rem 0; }
+.notif-row small { font-size: var(--text-xs); }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; margin-top: 7px; flex-shrink: 0; }
+.notif-row.unread .notif-dot { background: var(--brand); }
+.notif-row.unread strong { font-weight: 600; }
+
 /* ---------- Footer ---------- */
 .site-footer {
   border-top: 1px solid var(--divider);
@@ -788,9 +814,12 @@ textarea { resize: vertical; min-height: 90px; }
 .message-composer { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--divider); }
 .message-composer textarea { min-height: 42px; max-height: 140px; }
 .composer-actions { display: flex; align-items: flex-end; }
+.thread-card-meta .nav-badge { vertical-align: 1px; }
 @media (max-width: 820px) {
   .messages-shell { flex-direction: column; }
   .thread-list { width: 100%; flex-direction: column; }
+  /* On phones the inbox is the list; an empty chat panel is just noise. */
+  .chat-panel-empty { display: none; }
 }
 
 /* ---------- Tables ---------- */

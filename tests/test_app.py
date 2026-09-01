@@ -225,7 +225,7 @@ def test_rsvp_and_unrsvp(client, app):
     resp = post(client, f"/event/{event_id}/rsvp", f"/event/{event_id}")
     assert "on the list" in resp.get_data(as_text=True)
     resp = post(client, f"/event/{event_id}/rsvp", f"/event/{event_id}")
-    assert "RSVP removed" in resp.get_data(as_text=True)
+    assert "Registration cancelled" in resp.get_data(as_text=True)
     with client.application.app_context():
         assert RSVP.query.count() == 0
 
@@ -979,3 +979,161 @@ def test_officer_delete_account_with_posted_events(client, app):
     with client.application.app_context():
         assert User.query.filter_by(email="deleteme@uw.edu").count() == 0
         assert Event.query.filter_by(name="Orphan Event").one().created_by is None
+
+
+# ---------- retention layer (notifications, cancel, unread, feeds, tasks) ----------
+def _make_officer_with_member(app):
+    """Owner runs club 1; a member has joined it. Returns (owner_email, member_email)."""
+    with app.app_context():
+        owner = User(email="own3@uw.edu", name="Owner Three")
+        owner.set_password("testpass123")
+        member = User(email="mem3@uw.edu", name="Member Three")
+        member.set_password("testpass123")
+        db.session.add_all([owner, member])
+        db.session.commit()
+        db.session.get(Club, 1).officer_id = owner.id
+        db.session.add(Membership(user_id=member.id, club_id=1))
+        db.session.commit()
+
+
+def test_new_event_notifies_members(client, app):
+    from models import Notification
+    _make_officer_with_member(app)
+    login(client, "own3@uw.edu")
+    post(client, "/officer/club/1/events/new", "/officer/club/1/events/new",
+         name="Notified Event", schedule="weekly", weekday="Friday", time="18:00")
+    client.get("/logout")
+
+    with app.app_context():
+        member = User.query.filter_by(email="mem3@uw.edu").one()
+        notes = Notification.query.filter_by(user_id=member.id).all()
+        assert any("Notified Event" in n.title for n in notes)
+
+    # The bell badge renders for the member, and the page marks things read
+    login(client, "mem3@uw.edu")
+    html = client.get("/dashboard").get_data(as_text=True)
+    assert "nav-badge" in html
+    html = client.get("/notifications").get_data(as_text=True)
+    assert "Notified Event" in html
+    html = client.get("/dashboard").get_data(as_text=True)
+    assert 'nav-bell has-unread' not in html
+
+
+def test_cancel_event_notifies_attendees_and_blocks_rsvp(client, app):
+    from models import Notification
+    _make_officer_with_member(app)
+    event_id = make_event(app)
+
+    login(client, "mem3@uw.edu")
+    post(client, f"/event/{event_id}/rsvp", f"/event/{event_id}")
+    client.get("/logout")
+
+    login(client, "own3@uw.edu")
+    resp = post(client, f"/officer/event/{event_id}/cancel", "/officer/")
+    assert "cancelled" in resp.get_data(as_text=True)
+    client.get("/logout")
+
+    with app.app_context():
+        member = User.query.filter_by(email="mem3@uw.edu").one()
+        assert Notification.query.filter_by(user_id=member.id, kind="cancelled").count() == 1
+        assert db.session.get(Event, event_id).is_cancelled
+
+    # Cancelled events leave the browse list and refuse new registrations
+    login(client, "mem3@uw.edu")
+    assert "Test Meetup" not in client.get("/events").get_data(as_text=True)
+    html = client.get(f"/event/{event_id}").get_data(as_text=True)
+    assert "cancelled" in html.lower()
+
+
+def test_delete_requires_cancel_when_attendees_exist(client, app):
+    _make_officer_with_member(app)
+    event_id = make_event(app)
+    login(client, "mem3@uw.edu")
+    post(client, f"/event/{event_id}/rsvp", f"/event/{event_id}")
+    client.get("/logout")
+
+    login(client, "own3@uw.edu")
+    resp = post(client, f"/officer/event/{event_id}/delete", "/officer/")
+    assert "Cancel the event first" in resp.get_data(as_text=True)
+    with app.app_context():
+        assert db.session.get(Event, event_id) is not None
+
+
+def test_unread_message_indicators(client, app):
+    _make_officer_with_member(app)
+    login(client, "own3@uw.edu")
+    post(client, "/messages/club/1", "/messages/club/1", body="Meeting moved to HUB 250")
+    client.get("/logout")
+
+    login(client, "mem3@uw.edu")
+    html = client.get("/dashboard").get_data(as_text=True)
+    assert "Messages <span" in html  # nav badge on the Messages link
+    html = client.get("/messages/").get_data(as_text=True)
+    assert "unread" in html
+    # Opening the thread clears it
+    client.get("/messages/club/1")
+    html = client.get("/dashboard").get_data(as_text=True)
+    assert "Messages <span" not in html
+
+
+def test_personal_ics_feed(client, app):
+    event_id = make_event(app)
+    register(client)
+    post(client, f"/event/{event_id}/rsvp", f"/event/{event_id}")
+    html = client.get("/calendar").get_data(as_text=True)
+    assert "Copy calendar link" in html
+
+    with app.app_context():
+        token = User.query.filter_by(email="student@uw.edu").one().ics_token
+        assert token
+
+    resp = client.get(f"/me/calendar.ics?t={token}")
+    assert resp.status_code == 200
+    assert "Test Meetup" in resp.get_data(as_text=True)
+    assert client.get("/me/calendar.ics?t=wrongtoken").status_code == 404
+    assert client.get("/me/calendar.ics").status_code == 404
+
+
+def test_task_endpoints_are_token_gated(client, app):
+    # No token configured -> 404 even with a guess
+    assert client.get("/tasks/reminders?token=guess").status_code == 404
+
+    class TaskConfig(TestConfig):
+        TASKS_TOKEN = "sekrit"
+
+    tapp = create_app(TaskConfig)
+    with tapp.app_context():
+        db.create_all()
+        club = Club(name="Cron Club", category="Technology")
+        db.session.add(club)
+        db.session.commit()
+        user = User(email="cron@uw.edu", name="Cron User")
+        user.set_password("testpass123")
+        db.session.add(user)
+        db.session.commit()
+        db.session.add(Membership(user_id=user.id, club_id=club.id))
+        event = Event(club_id=club.id, name="Cron Event", weekday="Monday", time="10:00")
+        db.session.add(event)
+        db.session.commit()
+        db.session.add(RSVP(event_id=event.id, user_id=user.id))
+        db.session.commit()
+
+        tclient = tapp.test_client()
+        assert tclient.get("/tasks/digest?token=wrong").status_code == 404
+        resp = tclient.get("/tasks/digest?token=sekrit")
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "ok"
+        resp = tclient.get("/tasks/reminders?token=sekrit")
+        assert resp.status_code == 200
+        db.session.remove()
+        db.drop_all()
+
+
+def test_search_ranks_name_hits_first(client, app):
+    with app.app_context():
+        db.session.add(Club(name="Quantum Computing Club",
+                            description="chess strategy discussions sometimes", category="Technology"))
+        db.session.commit()
+    html = client.get("/search?q=chess").get_data(as_text=True)
+    # Name match (Chess Society) must appear before the description-only match
+    assert html.index("Chess Society") < html.index("Quantum Computing Club")

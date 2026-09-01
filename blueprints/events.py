@@ -9,10 +9,11 @@ bp = Blueprint("events", __name__)
 
 
 def _visible_events_query():
+    query = Event.query.filter(Event.status != "cancelled")
     if not current_user.is_authenticated:
-        return Event.query.filter(Event.is_public.is_(True))
+        return query.filter(Event.is_public.is_(True))
     user_club_ids = current_user.joined_club_ids
-    return Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
+    return query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
 
 
 def _can_view_event(event):
@@ -59,6 +60,15 @@ def browse():
     if day != "all":
         query = query.filter(Event.weekday == day)
 
+    # Cards touch event.club and event.rsvps[n].user — load them up front
+    # instead of one lazy query per card.
+    from sqlalchemy.orm import joinedload, selectinload
+    from models import RSVP as RSVPModel
+    query = query.options(
+        joinedload(Event.club),
+        selectinload(Event.rsvps).joinedload(RSVPModel.user),
+    )
+
     upcoming, past = split_upcoming(query.all())
     day_groups = group_events_by_day(upcoming)
     categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
@@ -96,13 +106,21 @@ def detail(event_id):
 @login_required
 def rsvp(event_id):
     event = _visible_event_or_404(event_id)
+    if event.is_cancelled:
+        flash("This event was cancelled.", "error")
+        return redirect(url_for("events.detail", event_id=event.id))
     existing = RSVP.query.filter_by(event_id=event.id, user_id=current_user.id).first()
     if existing:
         db.session.delete(existing)
         db.session.commit()
-        flash("RSVP removed.", "info")
+        flash("Registration cancelled.", "info")
     else:
-        if event.attendee_count >= event.capacity:
+        # Row lock so two simultaneous registrations can't oversell the last
+        # spot (no-op on SQLite, real on Postgres).
+        db.session.query(Event).filter_by(id=event.id).with_for_update().first()
+        count = db.session.query(RSVP).filter_by(event_id=event.id).count()
+        if count >= (event.capacity or 0):
+            db.session.rollback()
             flash("This event is at capacity.", "error")
             return redirect(url_for("events.detail", event_id=event.id))
         db.session.add(RSVP(event_id=event.id, user_id=current_user.id))

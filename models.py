@@ -14,6 +14,15 @@ class User(UserMixin, db.Model):
     university = db.Column(db.String(120), default="University of Washington")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     email_verified_at = db.Column(db.DateTime, nullable=True)
+    # Secret for the login-free personal calendar feed; minted lazily.
+    ics_token = db.Column(db.String(64), nullable=True)
+    digest_opt_out = db.Column(db.Boolean, default=False)
+
+    def ensure_ics_token(self):
+        if not self.ics_token:
+            import secrets
+            self.ics_token = secrets.token_hex(16)
+        return self.ics_token
 
     preferences = db.relationship(
         "UserPreference", backref="user", uselist=False, cascade="all, delete-orphan"
@@ -157,7 +166,7 @@ class Club(db.Model):
 class Membership(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False, index=True)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (db.UniqueConstraint("user_id", "club_id", name="uq_membership"),)
@@ -216,8 +225,11 @@ class ClubMessage(db.Model):
 
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
+    # 'active' or 'cancelled' — cancelling notifies attendees; deleting is
+    # reserved for events that were never real (and stays officer-only).
+    status = db.Column(db.String(16), default="active", nullable=False)
     description = db.Column(db.Text, default="")
     weekday = db.Column(db.String(20), default="Monday")
     time = db.Column(db.String(20), default="18:00")
@@ -235,6 +247,10 @@ class Event(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     rsvps = db.relationship("RSVP", backref="event", cascade="all, delete-orphan")
+
+    @property
+    def is_cancelled(self):
+        return self.status == "cancelled"
 
     @property
     def is_recurring(self):
@@ -306,6 +322,19 @@ class Event(db.Model):
         return occ.strftime("%b").upper(), str(occ.day)
 
     @property
+    def start_iso(self):
+        """Timezone-qualified ISO start for structured data / feeds."""
+        from utils import CAMPUS_TZ
+        return self.next_occurrence().replace(tzinfo=CAMPUS_TZ).isoformat()
+
+    @property
+    def end_iso(self):
+        from datetime import timedelta
+        from utils import CAMPUS_TZ
+        end = self.ends_at if (not self.is_recurring and self.ends_at) else self.next_occurrence() + timedelta(hours=1)
+        return end.replace(tzinfo=CAMPUS_TZ).isoformat()
+
+    @property
     def hue(self):
         # Stable per-club hue drives the tinted page theme (golden-angle
         # spacing keeps neighboring ids visually distinct).
@@ -327,7 +356,7 @@ class Event(db.Model):
 
 class RSVP(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey("event.id"), nullable=False)
+    event_id = db.Column(db.Integer, db.ForeignKey("event.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -349,6 +378,40 @@ class SavedClub(db.Model):
     )
 
     __table_args__ = (db.UniqueConstraint("user_id", "club_id", "kind", name="uq_saved_club"),)
+
+
+class Notification(db.Model):
+    """In-app notification; the nav bell counts unread rows."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    kind = db.Column(db.String(32), default="general", nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.String(500), default="")
+    link = db.Column(db.String(300), default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    read_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship(
+        "User", backref=db.backref("notifications", cascade="all, delete-orphan")
+    )
+
+    @property
+    def is_read(self):
+        return self.read_at is not None
+
+
+class ThreadRead(db.Model):
+    """Per-user read marker for a club's message thread (unread indicators)."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False, index=True)
+    last_read_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship(
+        "User", backref=db.backref("thread_reads", cascade="all, delete-orphan")
+    )
+
+    __table_args__ = (db.UniqueConstraint("user_id", "club_id", name="uq_thread_read"),)
 
 
 class UserPreference(db.Model):

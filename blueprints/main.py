@@ -9,6 +9,14 @@ from models import Club, Event, Membership, UserPreference
 
 bp = Blueprint("main", __name__)
 
+# Tiny in-process TTL cache for the anonymous landing page (its stats scan
+# whole tables; single-worker deploy makes this safe and effective).
+_landing_cache = {"at": 0.0, "data": None}
+_LANDING_TTL = 600
+
+# Per-user matcher results (user_id -> (timestamp, matches)).
+_suggest_cache = {}
+
 
 @bp.route("/healthz")
 def healthz():
@@ -22,22 +30,29 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
 
-    category_counts = (
-        db.session.query(Club.category, func.count(Club.id))
-        .group_by(Club.category)
-        .order_by(func.count(Club.id).desc())
-        .all()
-    )
-    public_events, _ = split_upcoming(Event.query.filter(Event.is_public.is_(True)).all())
-    stats = {
-        "total_clubs": Club.query.count(),
-        "total_events": len(public_events),
-        "categories": len(category_counts),
-        "top_categories": dict(category_counts[:8]),
-    }
-    ticker_clubs = [
-        c.name for c in Club.query.order_by(func.random()).limit(18).all()
-    ]
+    import time
+    if _landing_cache["data"] and time.time() - _landing_cache["at"] < _LANDING_TTL:
+        stats, ticker_clubs = _landing_cache["data"]
+    else:
+        category_counts = (
+            db.session.query(Club.category, func.count(Club.id))
+            .group_by(Club.category)
+            .order_by(func.count(Club.id).desc())
+            .all()
+        )
+        public_events, _ = split_upcoming(
+            Event.query.filter(Event.is_public.is_(True), Event.status != "cancelled").all()
+        )
+        stats = {
+            "total_clubs": Club.query.count(),
+            "total_events": len(public_events),
+            "categories": len(category_counts),
+            "top_categories": dict(category_counts[:8]),
+        }
+        ticker_clubs = [
+            c.name for c in Club.query.order_by(func.random()).limit(18).all()
+        ]
+        _landing_cache.update(at=time.time(), data=(stats, ticker_clubs))
     return render_template("landing.html", stats=stats, ticker_clubs=ticker_clubs)
 
 
@@ -111,29 +126,42 @@ def dashboard():
     user_club_ids = {c.id for c in user_clubs}
 
     # Events the user has RSVP'd to, soonest first (past one-offs excluded)
-    my_events, _ = split_upcoming(r.event for r in current_user.rsvps)
+    my_events, _ = split_upcoming(
+        r.event for r in current_user.rsvps if not r.event.is_cancelled
+    )
 
     # Events from the user's clubs they haven't RSVP'd to yet
     rsvp_ids = {r.event_id for r in current_user.rsvps}
+    live = Event.query.filter(Event.status != "cancelled")
     club_events = (
         split_upcoming(
-            Event.query.filter(Event.club_id.in_(user_club_ids), ~Event.id.in_(rsvp_ids)).all()
+            live.filter(Event.club_id.in_(user_club_ids), ~Event.id.in_(rsvp_ids)).all()
         )[0][:3]
     ) if user_club_ids else []
 
     featured_events = split_upcoming(
-        Event.query.filter(Event.is_public.is_(True), ~Event.id.in_(rsvp_ids)).all()
+        live.filter(Event.is_public.is_(True), ~Event.id.in_(rsvp_ids)).all()
     )[0][:6]
 
-    # A taste of the matcher: top 3 unjoined matches
+    # A taste of the matcher: top 3 unjoined matches. Scoring all 1,231
+    # clubs in Python on every dashboard load doesn't scale, so cache per
+    # user for a few minutes.
     suggestions = []
     if current_user.preferences:
-        all_matches = smart_match_clubs(
-            Club.query.all(),
-            current_user.preferences.category_list(),
-            current_user.preferences.major,
-            current_user.preferences.time_commitment,
-        )
+        import time
+        cached = _suggest_cache.get(current_user.id)
+        if cached and time.time() - cached[0] < 600:
+            all_matches = cached[1]
+        else:
+            all_matches = smart_match_clubs(
+                Club.query.all(),
+                current_user.preferences.category_list(),
+                current_user.preferences.major,
+                current_user.preferences.time_commitment,
+            )
+            if len(_suggest_cache) > 500:
+                _suggest_cache.clear()
+            _suggest_cache[current_user.id] = (time.time(), all_matches)
         suggestions = [m for m in all_matches if m["club"].id not in user_club_ids][:3]
 
     saved = [s.club for s in current_user.saved_clubs if s.kind == "saved"]
@@ -180,6 +208,42 @@ def dashboard():
     )
 
 
+@bp.route("/notifications")
+@login_required
+def notifications():
+    from datetime import datetime
+    from models import Notification
+    items = (
+        Notification.query.filter_by(user_id=current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    # Snapshot which were unread (for bolding), then mark everything read.
+    unread_ids = {n.id for n in items if not n.is_read}
+    Notification.query.filter_by(user_id=current_user.id, read_at=None).update(
+        {"read_at": datetime.utcnow()}, synchronize_session=False
+    )
+    db.session.commit()
+    return render_template("notifications.html", items=items, unread_ids=unread_ids)
+
+
+@bp.route("/me/calendar.ics")
+def my_calendar_feed():
+    """Login-free personal feed (calendar apps can't log in); the token in
+    the URL is the credential."""
+    from flask import Response, abort
+    from models import User
+    from utils import build_ics_feed
+    token = request.args.get("t", "")
+    user = User.query.filter_by(ics_token=token).first() if token else None
+    if not user:
+        abort(404)
+    events = [r.event for r in user.rsvps if not r.event.is_cancelled]
+    feed = build_ics_feed(events, name=f"Eventully — {user.name.split(' ')[0]}'s events")
+    return Response(feed, mimetype="text/calendar")
+
+
 @bp.route("/about")
 def about():
     stats = {
@@ -195,7 +259,8 @@ def calendar():
     from datetime import timedelta
     user_club_ids = current_user.joined_club_ids
     upcoming, _ = split_upcoming(
-        Event.query.filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids))).all()
+        Event.query.filter(Event.status != "cancelled")
+        .filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids))).all()
     )
     now = campus_now()
     week = []
@@ -204,20 +269,36 @@ def calendar():
         todays = [e for e in upcoming if e.next_occurrence(now).date() == day]
         week.append((day, todays))
     rsvp_ids = {r.event_id for r in current_user.rsvps}
-    return render_template("calendar.html", week=week, today=now.date(), rsvp_ids=rsvp_ids)
+    # Mint the personal-feed token on first visit so the subscribe box works.
+    if not current_user.ics_token:
+        current_user.ensure_ics_token()
+        db.session.commit()
+    feed_url = url_for("main.my_calendar_feed", t=current_user.ics_token, _external=True)
+    return render_template(
+        "calendar.html", week=week, today=now.date(), rsvp_ids=rsvp_ids, feed_url=feed_url
+    )
 
 
 @bp.route("/search")
 def search():
+    from sqlalchemy import case
     q = request.args.get("q", "").strip()
     clubs, events = [], []
     if q:
         like = f"%{q}%"
+        # Weighted relevance: a name hit beats a description hit, a claimed
+        # (actively maintained) club beats a dormant listing.
+        relevance = (
+            case((Club.name.ilike(f"{q}%"), 4), else_=0)
+            + case((Club.name.ilike(like), 2), else_=0)
+            + case((Club.officer_id.isnot(None), 1), else_=0)
+        )
         clubs = (Club.query.filter(db.or_(Club.name.ilike(like), Club.description.ilike(like)))
-                 .order_by(Club.name).limit(24).all())
+                 .order_by(relevance.desc(), Club.name).limit(24).all())
         user_club_ids = current_user.joined_club_ids if current_user.is_authenticated else set()
         events = sorted(
             Event.query
+            .filter(Event.status != "cancelled")
             .filter(db.or_(Event.is_public.is_(True), Event.club_id.in_(user_club_ids)))
             .filter(db.or_(Event.name.ilike(like), Event.description.ilike(like), Event.location.ilike(like)))
             .limit(12).all(),
@@ -247,8 +328,19 @@ def terms():
 @bp.route("/robots.txt")
 def robots():
     from flask import Response
-    return Response("User-agent: *\nAllow: /\nSitemap: " + url_for("main.sitemap", _external=True) + "\n",
-                    mimetype="text/plain")
+    lines = [
+        "User-agent: *",
+        "Disallow: /settings",
+        "Disallow: /messages",
+        "Disallow: /officer",
+        "Disallow: /admin",
+        "Disallow: /notifications",
+        "Disallow: /me/",
+        "Allow: /",
+        "Sitemap: " + url_for("main.sitemap", _external=True),
+        "",
+    ]
+    return Response("\n".join(lines), mimetype="text/plain")
 
 
 @bp.route("/sitemap.xml")

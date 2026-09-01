@@ -9,12 +9,13 @@ A web platform that helps University of Washington students discover clubs from 
 This is a full rebuild of the original class project into a real, deployable application:
 
 - **Real accounts** — email + hashed password (Flask-Login + Werkzeug), not just an email field
-- **Persistent database** (SQLite by default, swaps to Postgres by setting one env var) — nothing resets when the server restarts
-- **Club officer claiming** — any user can request to claim an unclaimed club; a site admin reviews and approves the request before handing over the listing
-- **Officer tools** — claimed clubs can edit their description, invite co-officers, post events, manage RSVPs, and message club members
-- **Account recovery** — email verification and password reset links are supported through SMTP-backed transactional email
-- **A polished product UI** — dark launch surfaces, app-style dashboards, event capacity bars, and split-pane club messaging
-- **Production-ready config** — gunicorn, a Procfile, environment-based secrets, error pages
+- **Real event dates** — one-time events with calendar dates and times, or weekly recurring ones; listings render as date-grouped timelines ("Today", "Tomorrow"), working Google Calendar / .ics buttons, and a personal calendar-subscription feed
+- **Notifications** — in-app bell + unread badges; members hear about new events, cancellations, claim decisions, and team invites (email too when SMTP is configured)
+- **Club officer claiming** — any user can request to claim an unclaimed club; admins get emailed, the claimant gets confirmations and a decision notification
+- **Officer tools** — edit the listing, invite co-officers, post/cancel events (cancelling notifies attendees), manage RSVPs, and message club members with unread indicators
+- **Scheduled jobs** — token-guarded `/tasks/reminders` (day-of event reminders) and `/tasks/digest` ("your clubs this week"), driven by a GitHub Actions schedule
+- **A Luma-inspired design system** — light + dark themes, per-club tinted pages, timeline cards, installable PWA manifest, per-page OG cards, schema.org Event markup
+- **Production-ready config** — gunicorn, a Procfile, environment-based secrets, error pages, CI running the test suite on every push
 
 ## Project structure
 
@@ -88,6 +89,7 @@ Set these in `.env` locally, or in your host's dashboard when deploying:
 | `SEED_DEMO_ACCOUNT` | Seeds `demo@uw.edu` and the sample demo events. **Set `false` in production** — the password is public and the events are fictional. | `true` |
 | `EMAIL_VERIFICATION_REQUIRED` | When `true`, blocks unverified users from club claims and officer tools. Configure SMTP first. | `false` |
 | `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_USE_TLS` | SMTP settings for verification, reset, claim, team, and message notification emails. | disabled |
+| `TASKS_TOKEN` | Shared secret for the `/tasks/*` scheduled-job endpoints (digest + reminders). Generate with `python3 -c "import secrets; print(secrets.token_hex(24))"` and set the same value as a `TASKS_TOKEN` GitHub Actions secret so `scheduled-tasks.yml` can call them. Unset = the endpoints 404. | disabled |
 
 ### Production email
 
@@ -111,9 +113,15 @@ After saving those values, open `/admin/launch-readiness` as an admin and click 
 3. In Resend: **Domains → Add Domain**, then add the SPF/DKIM records it lists at your DNS provider and hit Verify. Set `MAIL_FROM` to `Eventully <hello@yourdomain>`.
 4. Set `CANONICAL_HOST` (e.g. `eventully.org`) in Render — every other host (like the `.onrender.com` URL) then 301s to it. `/healthz` is exempt so Render's health checks keep passing.
 
-### Staying warm on the free tier
+### Hosting plan
 
-Render's free tier spins the app down after 15 idle minutes (~50s cold start for the next visitor). The `keep-warm` GitHub Action pings `/healthz` every 10 minutes to prevent that. GitHub pauses scheduled workflows after 60 days without repo activity — any push re-arms it. For uptime *alerts* on top, point a free UptimeRobot monitor at `/healthz`.
+Production runs on Render's **Starter** instance ($7/mo — always on, no cold starts) with a paid **basic-256mb Postgres** (~$6/mo — daily backups, no free-tier expiry). Free-tier warnings from earlier iterations no longer apply; the old keep-warm Action has been retired. For uptime *alerts*, point a free UptimeRobot monitor at `/healthz`.
+
+> History lesson (August 2026): the original free Postgres was auto-deleted at its 30-day limit and took the launch data with it. Free databases are fine for demos, never for a live site.
+
+### Scheduled jobs (reminders + digest)
+
+`/.github/workflows/scheduled-tasks.yml` calls the app daily (8am PT, day-of event reminders) and Sundays (9am PT, weekly digest). To enable: set `TASKS_TOKEN` on the Render service **and** add the same value as a repository Actions secret named `TASKS_TOKEN`. Users can opt out of the digest in Settings.
 
 ## Security
 

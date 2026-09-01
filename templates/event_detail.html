@@ -9,6 +9,28 @@
   <meta property="og:type" content="article">
   {% if event.image_url %}<meta property="og:image" content="{{ event.image_url }}">{% endif %}
   <meta name="twitter:card" content="{{ 'summary_large_image' if event.image_url else 'summary' }}">
+  {% if event.is_public %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": {{ event.name|tojson }},
+    "startDate": {{ event.start_iso|tojson }},
+    "endDate": {{ event.end_iso|tojson }},
+    "eventStatus": "https://schema.org/{{ 'EventCancelled' if event.is_cancelled else 'EventScheduled' }}",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "location": {
+      "@type": "Place",
+      "name": {{ event.location|tojson }},
+      "address": "University of Washington, Seattle, WA"
+    },
+    "organizer": { "@type": "Organization", "name": {{ event.club.name|tojson }} },
+    "description": {{ (event.description or event.name)|tojson }},
+    "isAccessibleForFree": true{% if event.image_url %},
+    "image": {{ event.image_url|tojson }}{% endif %}
+  }
+  </script>
+  {% endif %}
 {% endblock %}
 
 {% block main_class %}tinted{% endblock %}
@@ -49,6 +71,13 @@
       <span class="muted">Featured in</span> {{ event.club.category }}
     </span>
 
+    {% if event.is_cancelled %}
+      <div class="card" style="padding:0.75rem 1rem; border-left:3px solid var(--danger);">
+        <strong style="font-weight:600;">This event was cancelled.</strong>
+        <span class="muted" style="font-size:var(--text-sm);"> Everyone who registered has been notified.</span>
+      </div>
+    {% endif %}
+
     <h1 class="event-title">{{ event.name }}</h1>
 
     <div class="when-row">
@@ -70,7 +99,12 @@
     <div class="card rsvp-card">
       <div class="rsvp-card-head">Registration</div>
       <div class="rsvp-card-body">
-        {% if not current_user.is_authenticated %}
+        {% if event.is_cancelled %}
+          <div class="rsvp-status">
+            <span class="icon-tile" style="color:var(--danger);">✕</span>
+            <span><strong>Cancelled</strong><span>Registration is closed — this event isn't happening.</span></span>
+          </div>
+        {% elif not current_user.is_authenticated %}
           <div class="rsvp-status">
             <span class="icon-tile">{{ icon("people") }}</span>
             <span><strong>Welcome!</strong><span>To register for this event, log in or create a free account.</span></span>
