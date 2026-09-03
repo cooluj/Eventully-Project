@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Not allowed{% endblock %}
 {% block content %}
-<section class="section container" style="max-width:640px; text-align:center;">
+<section class="app-page container-narrow error-page">
   <div class="error-code" aria-hidden="true">403</div>
-  <span class="eyebrow" style="justify-content:center;">Restricted stacks</span>
-  <h2 style="margin-top:10px;">You don't have access to that</h2>
-  <p class="muted">This page belongs to a club officer or a site admin. If that's supposed
-    to be you, make sure you're logged into the right account.</p>
+  <span class="page-kicker">Not allowed</span>
+  <h1>You don't have access to that</h1>
+  <p class="muted">This page belongs to a club officer or a site admin. If that's supposed to be you, make sure you're logged into the right account.</p>
   <div class="hero-actions" style="justify-content:center;">
-    <a href="{{ url_for('main.index') }}" class="btn btn-gold">Back to Eventully</a>
+    <a href="{{ url_for('main.index') }}" class="btn">Back to Eventully</a>
+    
   </div>
 </section>
 {% endblock %}

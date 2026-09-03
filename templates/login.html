@@ -2,36 +2,29 @@
 {% block title %}Log in{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <form class="form-card" method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) if request.args.get('next') else url_for('auth.login') }}" novalidate>
+<section class="app-page container">
+  <form class="card form-card auth-card" method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) if request.args.get('next') else url_for('auth.login') }}" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <span class="eyebrow">Welcome back</span>
-    <h2 style="margin-top:10px;">Log in</h2>
+    <span class="page-kicker">Welcome back</span>
+    <h1 class="form-title">Log in</h1>
 
     <div class="field">
       <label for="email">Email</label>
-      <input type="email" id="email" name="email" value="{{ email }}" required autocomplete="email">
+      <input type="email" id="email" name="email" value="{{ email }}" required autocomplete="email" autofocus>
     </div>
     <div class="field">
-      <label for="password">Password</label>
+      <div class="label-row">
+        <label for="password">Password</label>
+        <a href="{{ url_for('auth.forgot_password') }}">Forgot it?</a>
+      </div>
       <input type="password" id="password" name="password" required autocomplete="current-password">
     </div>
 
-    <button type="submit" class="btn btn-gold btn-block">Log in</button>
-    <p style="text-align:center; margin:12px 0 0; font-size:0.86rem;">
-      <a href="{{ url_for('auth.forgot_password') }}" style="color:var(--purple); font-weight:700;">Forgot your password?</a>
-    </p>
+    <button type="submit" class="btn btn-block">Log in</button>
 
-    <p class="muted" style="text-align:center; margin-top:18px; font-size:0.88rem;">
-      New here? <a href="{{ url_for('auth.register') }}" style="color:var(--purple); font-weight:600;">Create an account</a>
-    </p>
-    <p class="muted" style="text-align:center; margin-top:8px; font-size:0.82rem;">
-      <a href="{{ url_for('auth.forgot_password') }}" style="color:var(--purple); font-weight:700;">Forgot your password?</a>
-    </p>
+    <p class="auth-links">New here? <a href="{{ url_for('auth.register', next=request.args.get('next')) if request.args.get('next') else url_for('auth.register') }}">Create an account</a></p>
     {% if show_demo_login %}
-      <p class="muted mono" style="text-align:center; margin-top:8px; font-size:0.76rem;">
-        Just browsing? demo@uw.edu / demopass123
-      </p>
+      <p class="auth-links mono">Just browsing? demo@uw.edu / demopass123</p>
     {% endif %}
   </form>
 </section>

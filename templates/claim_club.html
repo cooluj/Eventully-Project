@@ -1,21 +1,25 @@
 {% extends "base.html" %}
+{% from "_macros.html" import club_tile with context %}
 {% block title %}Claim {{ club.name }}{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <form class="form-card" method="POST" style="max-width:520px;">
+<section class="app-page container">
+  <form class="card form-card" method="POST" style="max-width:520px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <span class="eyebrow">Officer verification</span>
-    <h2 style="margin-top:10px;">Claim {{ club.name }}</h2>
-    <p class="muted">Tell us about your role so we can verify you're actually with this club before handing over the listing. A site admin reviews every request.</p>
+    <span class="page-kicker">Officer verification</span>
+    <div class="host-row" style="margin-bottom:0.75rem;">
+      {{ club_tile(club) }}
+      <span><h1 class="form-title" style="margin:0;">Claim {{ club.name }}</h1><span class="sub">{{ club.category }}</span></span>
+    </div>
+    <p class="form-lede">Tell us your role and how we can verify it. A person reviews every request, usually within a day, and you'll get an email either way.</p>
 
     <div class="field">
       <label for="message">Your role &amp; how we can verify it</label>
-      <textarea id="message" name="message" rows="5" placeholder="e.g. I'm the current president. You can confirm with our advisor at..." required></textarea>
+      <textarea id="message" name="message" rows="5" placeholder="e.g. I'm the current president. You can confirm with our advisor at…" required autofocus></textarea>
     </div>
 
-    <button type="submit" class="btn btn-gold btn-block">Submit claim request</button>
-    <a href="{{ url_for('clubs.detail', club_id=club.id) }}" class="btn btn-ghost btn-block" style="margin-top:8px;">Cancel</a>
+    <button type="submit" class="btn btn-block">Submit claim request</button>
+    <a href="{{ url_for('clubs.detail', club_id=club.id) }}" class="btn btn-ghost btn-block" style="margin-top:0.5rem;">Cancel</a>
   </form>
 </section>
 {% endblock %}

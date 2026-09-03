@@ -1,100 +1,114 @@
 {% extends "base.html" %}
-{% block title %}Review claims{% endblock %}
+{% from "_macros.html" import club_tile with context %}
+{% block title %}Officer claims{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <div class="section-head">
+<section class="app-page container-narrow">
+  <div class="page-hero">
     <div>
-      <span class="eyebrow">Admin</span>
-      <h2 style="margin-top:8px;">Club officer claims</h2>
+      <span class="page-kicker">Admin</span>
+      <h1>Officer claims</h1>
+      <p>Every claim is a real person waiting. Approve when the note checks out; a short reason helps when it doesn't.</p>
     </div>
     <a href="{{ url_for('admin.launch_readiness') }}" class="btn btn-ghost btn-sm">Launch readiness</a>
   </div>
 
-  <h3 style="margin-top:32px;">Pending ({{ pending|length }})</h3>
+  <h2 class="block-label">Pending <span class="muted">· {{ pending|length }}</span></h2>
   {% if not pending %}
-    <p class="muted">Nothing to review right now.</p>
+    <p class="muted" style="margin-bottom:2rem;">Nothing to review right now.</p>
   {% else %}
     {% for claim in pending %}
-      <div class="panel" style="margin-bottom:16px;">
-        <div class="section-head" style="margin-bottom:8px;">
-          <div>
-            <h3 style="margin:0;">{{ claim.club.name }}</h3>
-            <p class="muted" style="margin:4px 0 0;">Requested by {{ claim.requester.name }} ({{ claim.requester.email }})</p>
+      <article class="card claim-card" style="--hue:{{ claim.club.hue }};">
+        <div class="claim-head">
+          {{ club_tile(claim.club) }}
+          <div style="flex:1; min-width:200px;">
+            <h3><a href="{{ url_for('clubs.detail', club_id=claim.club.id) }}">{{ claim.club.name }}</a></h3>
+            <span class="muted">{{ claim.requester.name }} · {{ claim.requester.email }}{% if claim.requester.is_email_verified %} · verified email{% endif %}</span>
           </div>
-          <span class="mono muted" style="font-size:0.78rem;">{{ claim.created_at.strftime('%b %d, %Y') }}</span>
+          <span class="muted" style="font-size:var(--text-sm);">{{ claim.created_at|days_ago }}</span>
         </div>
-        <p>{{ claim.message }}</p>
+        <blockquote class="claim-note">{{ claim.message }}</blockquote>
         <div class="field">
-          <label for="decision-note-{{ claim.id }}">Decision note</label>
-          <textarea id="decision-note-{{ claim.id }}" name="decision_note" rows="2" placeholder="Optional note sent to the requester and saved for audit."></textarea>
+          <label for="decision-note-{{ claim.id }}">Decision note <span class="muted">· optional, sent to the requester</span></label>
+          <textarea id="decision-note-{{ claim.id }}" name="decision_note" rows="2"></textarea>
         </div>
         <div class="pill-row">
           <form method="POST" action="{{ url_for('admin.approve', claim_id=claim.id) }}" class="claim-decision-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="decision_note" value="">
-            <button type="submit" class="btn btn-gold btn-sm">Approve</button>
+            <button type="submit" class="btn btn-sm">Approve</button>
           </form>
           <form method="POST" action="{{ url_for('admin.reject', claim_id=claim.id) }}" class="claim-decision-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="decision_note" value="">
-            <button type="submit" class="btn btn-brick btn-sm">Reject</button>
+            <button type="submit" class="btn btn-ghost is-danger btn-sm">Reject</button>
           </form>
         </div>
-      </div>
+      </article>
     {% endfor %}
   {% endif %}
 
-  <h3 style="margin-top:40px;">Recent decisions</h3>
+  <h2 class="block-label" style="margin-top:2rem;">Recent decisions</h2>
   {% if not recent %}
     <p class="muted">No decisions yet.</p>
   {% else %}
-    <table class="data-table">
-      <tr><th>Club</th><th>Requester</th><th>Status</th><th>Reviewer</th><th>Decided</th></tr>
-      {% for claim in recent %}
-        <tr>
-          <td>{{ claim.club.name }}</td>
-          <td>{{ claim.requester.email }}</td>
-          <td><span class="badge badge-{{ 'great' if claim.status == 'approved' else 'unclaimed' }}">{{ claim.status }}</span></td>
-          <td>{{ claim.reviewer.email if claim.reviewer else "—" }}</td>
-          <td class="mono">{{ claim.decided_at.strftime('%b %d, %Y') if claim.decided_at }}</td>
-        </tr>
-        {% if claim.decision_note %}
-          <tr>
-            <td colspan="5" class="muted">{{ claim.decision_note }}</td>
-          </tr>
-        {% endif %}
-      {% endfor %}
-    </table>
+    <div class="card table-card">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th scope="col">Club</th><th scope="col">Requester</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Decided</th></tr></thead>
+          <tbody>
+          {% for claim in recent %}
+            <tr>
+              <td>{{ claim.club.name }}</td>
+              <td class="muted">{{ claim.requester.email }}</td>
+              <td><span class="badge badge-{{ 'member' if claim.status == 'approved' else 'full' }}">{{ claim.status }}</span></td>
+              <td class="muted">{{ claim.reviewer.email if claim.reviewer else "—" }}</td>
+              <td class="muted">{{ claim.decided_at.strftime('%b %d, %Y').replace(' 0', ' ') if claim.decided_at }}</td>
+            </tr>
+            {% if claim.decision_note %}
+              <tr><td colspan="5" class="muted" style="font-size:var(--text-sm);">“{{ claim.decision_note }}”</td></tr>
+            {% endif %}
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   {% endif %}
-  <h3 style="margin-top:40px;">Claimed clubs ({{ claimed_clubs|length }})</h3>
+
+  <h2 class="block-label" style="margin-top:2rem;">Claimed clubs <span class="muted">· {{ claimed_clubs|length }}</span></h2>
   {% if not claimed_clubs %}
     <p class="muted">No clubs are claimed yet.</p>
   {% else %}
-    <table class="data-table">
-      <tr><th>Club</th><th>Officer</th><th>Claimed</th><th></th></tr>
-      {% for club in claimed_clubs %}
-        <tr>
-          <td><a href="{{ url_for('clubs.detail', club_id=club.id) }}" style="color:var(--purple); font-weight:700;">{{ club.name }}</a></td>
-          <td>{{ club.officer.name }} · {{ club.officer.email }}</td>
-          <td class="mono">{{ club.claimed_at.strftime('%b %d, %Y') if club.claimed_at }}</td>
-          <td>
-            <form method="POST" action="{{ url_for('admin.revoke', club_id=club.id) }}"
-                  data-confirm="Remove this officer? The listing becomes unclaimed.">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red); border-color:#efc4c0;">Revoke</button>
-            </form>
-          </td>
-        </tr>
-      {% endfor %}
-    </table>
+    <div class="card table-card">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th scope="col">Club</th><th scope="col">Officer</th><th scope="col">Claimed</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody>
+          {% for club in claimed_clubs %}
+            <tr>
+              <td><a href="{{ url_for('clubs.detail', club_id=club.id) }}">{{ club.name }}</a></td>
+              <td class="muted">{{ club.officer.name }} · {{ club.officer.email }}</td>
+              <td class="muted">{{ club.claimed_at.strftime('%b %d, %Y').replace(' 0', ' ') if club.claimed_at }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.revoke', club_id=club.id) }}"
+                      data-confirm="Remove this officer? The listing becomes unclaimed.">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-ghost is-danger btn-sm">Revoke</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   {% endif %}
 </section>
 <script nonce="{{ csp_nonce() }}">
   document.querySelectorAll(".claim-decision-form").forEach(function (form) {
     form.addEventListener("submit", function () {
-      var panel = form.closest(".panel");
-      var note = panel ? panel.querySelector("textarea[name='decision_note']") : null;
+      var card = form.closest(".claim-card");
+      var note = card ? card.querySelector("textarea[name='decision_note']") : null;
       var hidden = form.querySelector("input[name='decision_note']");
       if (note && hidden) hidden.value = note.value;
     });

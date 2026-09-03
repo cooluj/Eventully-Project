@@ -2,31 +2,45 @@
 {% block title %}Members · {{ club.name }}{% endblock %}
 
 {% block content %}
-<section class="section container" style="max-width:720px;">
-  <span class="eyebrow">{{ club.name }}</span>
-  <h2 style="margin-top:8px;">Member list</h2>
-  <p class="muted">{{ memberships|length }} member{{ 's' if memberships|length != 1 }} — students who joined your club on Eventully.</p>
+<section class="app-page container-narrow" style="max-width:760px;">
+  <div class="page-hero">
+    <div>
+      <span class="page-kicker">{{ club.name }}</span>
+      <h1>Members</h1>
+      <p>{{ memberships|length }} student{{ 's' if memberships|length != 1 }} joined your club on Eventully.</p>
+    </div>
+    {% if memberships %}
+      <a href="{{ url_for('officer.members_csv', club_id=club.id) }}" class="btn btn-outline btn-sm">Download CSV</a>
+    {% endif %}
+  </div>
 
   {% if memberships %}
-    <table class="data-table" style="margin-top:16px;">
-      <tr><th>#</th><th>Name</th><th>Email</th><th>Joined</th></tr>
-      {% for m in memberships %}
-        <tr>
-          <td class="mono">{{ loop.index }}</td>
-          <td>{{ m.user.name }}</td>
-          <td><a href="mailto:{{ m.user.email }}" style="color:var(--purple);">{{ m.user.email }}</a></td>
-          <td class="mono muted">{{ m.joined_at.strftime("%b %d, %Y") }}</td>
-        </tr>
-      {% endfor %}
-    </table>
-    <p class="hint" style="margin-top:14px;">Emails are shown so you can welcome new members — please don't use them for anything else.</p>
+    <div class="card table-card">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Joined</th></tr></thead>
+          <tbody>
+          {% for m in memberships %}
+            <tr>
+              <td class="mono muted">{{ loop.index }}</td>
+              <td>{{ m.user.name }}</td>
+              <td><a href="mailto:{{ m.user.email }}">{{ m.user.email }}</a></td>
+              <td class="muted">{{ m.joined_at.strftime("%b %d, %Y").replace(" 0", " ") }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:0.75rem;">Emails are shown so you can welcome new members. Please don't use them for anything else.</p>
   {% else %}
-    <div class="empty-state" style="margin-top:24px;">
+    <div class="empty-state card">
       <h3>No members yet</h3>
-      <p>Share your club page with prospective members — joins will show up here.</p>
+      <p>Share your club page. Joins show up here.</p>
+      <a href="{{ url_for('clubs.detail', club_id=club.id) }}" class="btn btn-ghost">View club page</a>
     </div>
   {% endif %}
 
-  <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-sm" style="margin-top:20px;">← Back to officer dashboard</a>
+  <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-sm" style="margin-top:1.25rem;">← Officer tools</a>
 </section>
 {% endblock %}

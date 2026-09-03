@@ -1,13 +1,14 @@
 {% extends "base.html" %}
+{% from "_macros.html" import club_tile with context %}
 {% block title %}Messages{% endblock %}
 
 {% block content %}
 <section class="app-page container">
   <div class="page-hero messages-hero">
     <div>
-      <span class="eyebrow">{{ conversations|length }} conversation{{ 's' if conversations|length != 1 }}</span>
-      <h1>Club messages</h1>
-      <p>Talk with officers and members in one focused thread for each club you belong to or manage.</p>
+      <span class="page-kicker">{{ conversations|length }} conversation{{ 's' if conversations|length != 1 }}</span>
+      <h1>Messages</h1>
+      <p>One thread per club, for members and officers. Officer posts also go out by email.</p>
     </div>
     {% if selected_club %}
       <a href="{{ url_for('clubs.detail', club_id=selected_club.id) }}" class="btn btn-ghost">View club</a>
@@ -29,7 +30,7 @@
         {% for item in conversations %}
           {% set club = item.club %}
           <a class="thread-card {{ 'active' if selected_club and club.id == selected_club.id }}" href="{{ url_for('messages.thread', club_id=club.id) }}">
-            <span class="avatar avatar-{{ club.id % 5 }}">{{ club.avatar_letter }}</span>
+            {{ club_tile(club) }}
             <span class="thread-card-copy">
               <span class="thread-card-top">
                 <strong>{{ club.name }}</strong>
@@ -64,17 +65,17 @@
         {% endif %}
         {% if selected_club %}
           <div class="chat-head">
-            <span class="avatar avatar-{{ selected_club.id % 5 }}">{{ selected_club.avatar_letter }}</span>
+            {{ club_tile(selected_club) }}
             <div>
-              <span class="make-kicker">{{ selected_club.category }}</span>
+              <span class="page-kicker" style="margin-bottom:0;">{{ selected_club.category }}</span>
               <h2>{{ selected_club.name }}</h2>
               <div class="chat-head-meta">
                 {% if selected_club.officer %}
-                  <span>Officer: {{ selected_club.officer.name }}</span>
+                  <span>Run by {{ selected_club.officer.name }}</span>
                 {% else %}
                   <span>No officer claimed yet</span>
                 {% endif %}
-                <span>{{ selected_club.member_count }} member{{ 's' if selected_club.member_count != 1 }}</span>
+                <span>· {{ selected_club.member_count }} member{{ 's' if selected_club.member_count != 1 }}</span>
               </div>
             </div>
           </div>

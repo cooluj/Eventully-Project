@@ -1,12 +1,16 @@
 {% extends "base.html" %}
+{% from "_macros.html" import club_tile with context %}
 {% block title %}Edit {{ club.name }}{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <form class="form-card" method="POST" style="max-width:560px;">
+<section class="app-page container">
+  <form class="card form-card" method="POST" style="max-width:600px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <span class="eyebrow">Editing listing · No. {{ club.directory_number }}</span>
-    <h2 style="margin-top:10px;">{{ club.name }}</h2>
+    <span class="page-kicker">Listing · No. {{ club.directory_number }}</span>
+    <div class="host-row" style="margin-bottom:1rem;">
+      {{ club_tile(club) }}
+      <span><h1 class="form-title" style="margin:0;">{{ club.name }}</h1><span class="sub">{{ club.category }}</span></span>
+    </div>
 
     <div class="field">
       <label for="description">Description</label>
@@ -15,39 +19,40 @@
     </div>
 
     <div class="field">
-      <label for="meeting_info">Meeting time & place</label>
+      <label for="meeting_info">Meeting time &amp; place</label>
       <input type="text" id="meeting_info" name="meeting_info" value="{{ club.meeting_info }}" placeholder="e.g. Tuesdays 6pm, HUB 145">
     </div>
 
-    <div class="field" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-      <div>
+    <div class="field-grid">
+      <div class="field">
         <label for="dues">Dues</label>
         <input type="text" id="dues" name="dues" value="{{ club.dues }}" placeholder="No dues / $15 per quarter">
       </div>
-      <div>
+      <div class="field">
         <label for="hours_per_week">Time commitment</label>
         <input type="text" id="hours_per_week" name="hours_per_week" value="{{ club.hours_per_week }}" placeholder="2 hours/week">
       </div>
     </div>
 
-    <div class="field">
-      <label for="website">Website</label>
-      <input type="text" id="website" name="website" value="{{ club.website }}" placeholder="https://…">
-    </div>
-
-    <div class="field">
-      <label for="instagram">Instagram handle</label>
-      <input type="text" id="instagram" name="instagram" value="{{ club.instagram }}" placeholder="yourclub_uw (no @)">
+    <div class="field-grid">
+      <div class="field">
+        <label for="website">Website</label>
+        <input type="text" id="website" name="website" value="{{ club.website }}" placeholder="https://…">
+      </div>
+      <div class="field">
+        <label for="instagram">Instagram handle</label>
+        <input type="text" id="instagram" name="instagram" value="{{ club.instagram }}" placeholder="yourclub_uw (no @)">
+      </div>
     </div>
 
     <div class="field">
       <label for="contact_email">Contact email</label>
       <input type="email" id="contact_email" name="contact_email" value="{{ club.contact_email }}" placeholder="officers@yourclub.org">
-      <p class="hint">Shown publicly on your club page so students can reach you.</p>
+      <p class="hint">Shown on your club page so students can reach you.</p>
     </div>
 
-    <button type="submit" class="btn btn-gold btn-block">Save changes</button>
-    <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-block" style="margin-top:8px;">Back to officer dashboard</a>
+    <button type="submit" class="btn btn-block">Save changes</button>
+    <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-block" style="margin-top:0.5rem;">Back to officer tools</a>
   </form>
 </section>
 {% endblock %}

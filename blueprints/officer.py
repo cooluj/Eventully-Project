@@ -1,7 +1,9 @@
+import csv
+import io
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
@@ -111,8 +113,17 @@ def owns_club(view):
 @bp.route("/")
 @login_required
 def dashboard():
-    clubs = current_user.managed_clubs
-    return render_template("officer_dashboard.html", clubs=clubs)
+    from utils import split_upcoming
+    rows = []
+    for club in current_user.managed_clubs:
+        live = [e for e in club.events if not e.is_cancelled]
+        upcoming, past = split_upcoming(live)
+        cancelled = sorted(
+            (e for e in club.events if e.is_cancelled),
+            key=lambda e: e.starts_at or e.created_at, reverse=True,
+        )
+        rows.append({"club": club, "upcoming": upcoming, "past": past + cancelled})
+    return render_template("officer_dashboard.html", rows=rows)
 
 
 @bp.route("/club/<int:club_id>/edit", methods=["GET", "POST"])
@@ -253,12 +264,64 @@ def attendees(event_id):
     return render_template("event_attendees.html", event=event, rsvps=rsvps)
 
 
+def _csv_cell(value):
+    """Neutralize spreadsheet formula injection: a name like "=HYPERLINK(...)"
+    must open as text, not run, when an officer opens the export in Excel."""
+    text = str(value or "")
+    if text and text[0] in "=+-@\t\r":
+        return "'" + text
+    return text
+
+
+def _csv_response(header, rows, filename):
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(header)
+    for row in rows:
+        writer.writerow([_csv_cell(cell) for cell in row])
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@bp.route("/event/<int:event_id>/attendees.csv")
+@login_required
+def attendees_csv(event_id):
+    """The door list: who registered, in registration order."""
+    event = Event.query.get_or_404(event_id)
+    if not event.club.can_manage(current_user):
+        abort(403)
+    from utils import utc_to_campus
+    rsvps = sorted(event.rsvps, key=lambda r: r.created_at)
+    rows = [
+        (r.user.name, r.user.email, utc_to_campus(r.created_at).strftime("%Y-%m-%d %H:%M"))
+        for r in rsvps
+    ]
+    return _csv_response(
+        ["Name", "Email", "Registered (Pacific)"], rows, f"eventully-attendees-{event.id}.csv"
+    )
+
+
 @bp.route("/club/<int:club_id>/members")
 @login_required
 @owns_club
 def members(club):
     member_rows = sorted(club.memberships, key=lambda m: m.joined_at)
     return render_template("club_members.html", club=club, memberships=member_rows)
+
+
+@bp.route("/club/<int:club_id>/members.csv")
+@login_required
+@owns_club
+def members_csv(club):
+    from utils import utc_to_campus
+    rows = [
+        (m.user.name, m.user.email, utc_to_campus(m.joined_at).strftime("%Y-%m-%d"))
+        for m in sorted(club.memberships, key=lambda m: m.joined_at)
+    ]
+    return _csv_response(["Name", "Email", "Joined"], rows, f"eventully-members-{club.id}.csv")
 
 
 @bp.route("/club/<int:club_id>/team", methods=["POST"])

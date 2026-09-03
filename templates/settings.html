@@ -2,24 +2,28 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-<section class="section container" style="max-width:640px;">
-  <span class="eyebrow">Your account</span>
-  <h2 style="margin-top:8px;">Settings</h2>
+<section class="app-page container-narrow" style="max-width:640px;">
+  <div class="page-hero">
+    <div>
+      <span class="page-kicker">Your account</span>
+      <h1>Settings</h1>
+      <p>Profile, notifications, preferences, and the keys to the account.</p>
+    </div>
+  </div>
 
-  {% if not current_user.is_email_verified %}
-    <div class="panel panel-dashed" style="margin-top:20px;">
-      <span class="eyebrow">Verification</span>
-      <h3 style="font-size:1.1rem; margin-top:6px;">Verify your email</h3>
-      <p class="muted" style="margin-bottom:14px;">Verified accounts help officers and admins trust club claims, team invites, and member messages.</p>
+  {% if not current_user.is_email_verified and config.MAIL_SERVER %}
+    <div class="card panel-dashed settings-card">
+      <h2 class="card-title">Verify your email</h2>
+      <p class="muted">Verified accounts help officers and admins trust club claims, team invites, and member messages.</p>
       <form method="POST" action="{{ url_for('auth.resend_verification') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-sm">Send verification link</button>
+        <button type="submit" class="btn btn-outline btn-sm">Send verification link</button>
       </form>
     </div>
   {% endif %}
 
-  <div class="panel" style="margin-top:24px;">
-    <h3 style="font-size:1.1rem;">Profile</h3>
+  <div class="card settings-card">
+    <h2 class="card-title">Profile</h2>
     <form method="POST" action="{{ url_for('auth.settings') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="form" value="profile">
@@ -28,16 +32,16 @@
         <input type="text" id="name" name="name" value="{{ current_user.name }}" required>
       </div>
       <div class="field">
-        <label>Email</label>
-        <input type="email" value="{{ current_user.email }}" disabled>
-        <p class="hint">Your email is your login and can't be changed. {{ "Verified" if current_user.is_email_verified else "Not verified yet" }}.</p>
+        <label for="email">Email</label>
+        <input type="email" id="email" value="{{ current_user.email }}" disabled>
+        <p class="hint">Your email is your login and can't be changed. {{ "Verified." if current_user.is_email_verified else "Not verified yet." }}</p>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm">Save profile</button>
+      <button type="submit" class="btn btn-sm">Save profile</button>
     </form>
   </div>
 
-  <div class="panel" style="margin-top:20px;">
-    <h3 style="font-size:1.1rem;">Notifications & calendar</h3>
+  <div class="card settings-card">
+    <h2 class="card-title">Notifications &amp; calendar</h2>
     <form method="POST" action="{{ url_for('auth.settings') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="form" value="notifications">
@@ -45,21 +49,21 @@
         <input type="checkbox" id="digest" name="weekly_digest" {{ 'checked' if not current_user.digest_opt_out }}>
         <label for="digest" style="margin:0;">Weekly email digest of your clubs' upcoming events</label>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      <button type="submit" class="btn btn-sm">Save</button>
     </form>
     <p class="hint" style="margin-top:0.75rem;">Your personal calendar feed lives on the
-      <a href="{{ url_for('main.calendar') }}">This week</a> page — subscribe once and your
-      registrations appear in Google/Apple Calendar automatically.</p>
+      <a href="{{ url_for('main.calendar') }}">This week</a> page. Subscribe once and every
+      registration shows up in Google or Apple Calendar automatically.</p>
   </div>
 
-  <div class="panel" style="margin-top:20px;">
-    <h3 style="font-size:1.1rem;">Match preferences</h3>
-    <p class="muted" style="margin-bottom:14px;">Interests, major, and time commitment — these drive your club matches.</p>
+  <div class="card settings-card">
+    <h2 class="card-title">Match preferences</h2>
+    <p class="muted">Interests, major, and time commitment drive your club matches.</p>
     <a href="{{ url_for('main.onboarding') }}" class="btn btn-outline btn-sm">Edit preferences</a>
   </div>
 
-  <div class="panel" style="margin-top:20px;">
-    <h3 style="font-size:1.1rem;">Password</h3>
+  <div class="card settings-card">
+    <h2 class="card-title">Password</h2>
     <form method="POST" action="{{ url_for('auth.settings') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="form" value="password">
@@ -67,23 +71,24 @@
         <label for="current_password">Current password</label>
         <input type="password" id="current_password" name="current_password" autocomplete="current-password" required>
       </div>
-      <div class="field">
-        <label for="new_password">New password</label>
-        <input type="password" id="new_password" name="new_password" autocomplete="new-password" minlength="8" required>
-        <p class="hint">At least 8 characters.</p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="new_password">New password</label>
+          <input type="password" id="new_password" name="new_password" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirm new password</label>
+          <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
+        </div>
       </div>
-      <div class="field">
-        <label for="confirm_password">Confirm new password</label>
-        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
-      </div>
-      <button type="submit" class="btn btn-primary btn-sm">Change password</button>
+      <button type="submit" class="btn btn-sm">Change password</button>
     </form>
   </div>
 
-  <div class="panel" style="margin-top:20px; border-color:var(--danger-soft);">
-    <h3 style="font-size:1.1rem; color:var(--red);">Delete account</h3>
-    <p class="muted" style="margin-bottom:14px; font-size:0.9rem;">Permanently removes your account,
-      memberships, RSVPs, and saved clubs. Clubs you officer become unclaimed. This can't be undone.</p>
+  <div class="card settings-card danger-card">
+    <h2 class="card-title">Delete account</h2>
+    <p class="muted">Permanently removes your account, memberships, registrations, and saved clubs.
+      Clubs you officer become unclaimed. This can't be undone.</p>
     <form method="POST" action="{{ url_for('auth.delete_account') }}"
           data-confirm="Delete your account permanently? This cannot be undone.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -91,13 +96,13 @@
         <label for="delete_password">Confirm with your password</label>
         <input type="password" id="delete_password" name="password" autocomplete="current-password" required>
       </div>
-      <button type="submit" class="btn btn-brick btn-sm">Delete my account</button>
+      <button type="submit" class="btn btn-ghost is-danger btn-sm">Delete my account</button>
     </form>
   </div>
 
-  <p class="muted" style="margin-top:24px; font-size:0.85rem;">
+  <p class="muted" style="font-size:var(--text-sm);">
     Member since {{ current_user.created_at.strftime("%B %Y") }} ·
-    <a href="{{ url_for('auth.logout') }}" style="color:var(--red);">Log out</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
   </p>
 </section>
 {% endblock %}

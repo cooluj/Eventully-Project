@@ -147,7 +147,7 @@
       <div class="card side-panel" style="font-size:var(--text-sm); color:var(--ink-2);">
         {{ stats.clubs_joined }} club{{ 's' if stats.clubs_joined != 1 }} joined ·
         {{ stats.events_rsvpd }} RSVP{{ 's' if stats.events_rsvpd != 1 }} ·
-        {{ stats.total_available }} clubs indexed
+        {{ stats.total_available|commas }} clubs indexed
       </div>
     </aside>
   </div>

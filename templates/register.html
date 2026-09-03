@@ -2,37 +2,37 @@
 {% block title %}Create your account{% endblock %}
 
 {% block content %}
-<section class="section container">
-  <form class="form-card" method="POST" action="{{ url_for('auth.register') }}" novalidate>
+<section class="app-page container">
+  <form class="card form-card auth-card" method="POST" action="{{ url_for('auth.register') }}" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <span class="eyebrow">Registration card</span>
-    <h2 style="margin-top:10px;">Create your account</h2>
-    <p class="muted" style="margin-bottom:24px;">Students and club officers use the same login.</p>
+    <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+    <span class="page-kicker">Get started</span>
+    <h1 class="form-title">Create your account</h1>
+    <p class="form-lede">Students and club officers use the same login.</p>
 
     <div class="field">
       <label for="name">Full name</label>
-      <input type="text" id="name" name="name" value="{{ name }}" required autocomplete="name">
+      <input type="text" id="name" name="name" value="{{ name }}" required autocomplete="name" autofocus>
     </div>
     <div class="field">
       <label for="email">Email</label>
       <input type="email" id="email" name="email" value="{{ email }}" required autocomplete="email" placeholder="you@uw.edu">
-      <div class="hint">.edu address required</div>
+      <p class="hint">Any .edu address works.</p>
     </div>
     <div class="field">
       <label for="password">Password</label>
       <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8">
-      <div class="hint">At least 8 characters</div>
+      <p class="hint">At least 8 characters.</p>
     </div>
     <div class="field">
       <label for="confirm_password">Confirm password</label>
       <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
     </div>
 
-    <button type="submit" class="btn btn-gold btn-block">Create account</button>
+    <button type="submit" class="btn btn-block">Create account</button>
 
-    <p class="muted" style="text-align:center; margin-top:18px; font-size:0.88rem;">
-      Already have an account? <a href="{{ url_for('auth.login') }}" style="color:var(--purple); font-weight:600;">Log in</a>
-    </p>
+    <p class="auth-links">Already have an account? <a href="{{ url_for('auth.login', next=request.args.get('next')) if request.args.get('next') else url_for('auth.login') }}">Log in</a></p>
+    <p class="auth-links fine">By continuing you agree to the <a href="{{ url_for('main.terms') }}">terms</a> and <a href="{{ url_for('main.privacy') }}">privacy policy</a>.</p>
   </form>
 </section>
 {% endblock %}

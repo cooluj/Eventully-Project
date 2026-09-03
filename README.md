@@ -123,6 +123,33 @@ Production runs on Render's **Starter** instance ($7/mo — always on, no cold s
 
 `/.github/workflows/scheduled-tasks.yml` calls the app daily (8am PT, day-of event reminders) and Sundays (9am PT, weekly digest). To enable: set `TASKS_TOKEN` on the Render service **and** add the same value as a repository Actions secret named `TASKS_TOKEN`. Users can opt out of the digest in Settings.
 
+## Performance
+
+Pages render server-side and are measured, not guessed. `scripts/perf_report.py`
+seeds a throwaway database at production scale (all 1,231 clubs, 300 students,
+220 events, thousands of RSVPs) and prints SQL statements and render time per
+route for an anonymous visitor, a student, an officer, and an admin:
+
+```bash
+python scripts/perf_report.py
+SHOW_SQL=/dashboard python scripts/perf_report.py   # the repeated statements behind one route
+```
+
+Run it before and after anything that touches queries or templates; a jump in
+the `q` column is an N+1. Current numbers sit between 0 and 14 queries per
+page. The things that keep it there:
+
+- Many-to-one relationships every template touches (`event.club`, `rsvp.user`,
+  `message.sender`, `club.officer`, ...) load with a JOIN.
+- `load_attendee_previews()` fetches the face stacks for any number of events in
+  one window-function query.
+- The club matcher (all 1,231 clubs scored in Python) is memoized per user; the
+  club count and category list are TTL-cached; the landing page is cached for
+  ten minutes.
+- Responses are Brotli/gzip compressed; static assets carry a content hash and a
+  one-year immutable cache header; pages are `private, no-cache`.
+- The events timeline pages one week at a time.
+
 ## Security
 
 - All forms are CSRF-protected (Flask-WTF); passwords are hashed with PBKDF2-SHA256.

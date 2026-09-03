@@ -8,9 +8,9 @@ from utils import (WEEKDAYS, build_calendar_link, build_ics, campus_now, group_e
 
 bp = Blueprint("events", __name__)
 
-# Timeline pages two weeks at a time: every weekly event lands exactly once
+# Timeline pages one week at a time: every weekly event lands exactly once
 # per window, and the page stays readable when hundreds of clubs post.
-WINDOW_DAYS = 14
+WINDOW_DAYS = 7
 
 
 def category_list():

@@ -2,29 +2,33 @@
 {% block title %}Tell us about you{% endblock %}
 
 {% block content %}
-<section class="section container" style="max-width:720px;">
-  <span class="eyebrow">Preference card</span>
-  <h2 style="margin-top:10px;">A few questions before we match you</h2>
-  <p class="muted">This takes about 30 seconds. You can change these anytime.</p>
+<section class="app-page container-narrow" style="max-width:720px;">
+  <div class="page-hero">
+    <div>
+      <span class="page-kicker">Preferences</span>
+      <h1>A few questions before we match you</h1>
+      <p>About 30 seconds. You can change any of this later in settings.</p>
+    </div>
+  </div>
 
-  <form method="POST" action="{{ url_for('main.onboarding') }}" class="panel" style="margin-top:24px;" id="onboarding-form">
-
+  <form method="POST" action="{{ url_for('main.onboarding') }}" class="card" id="onboarding-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field">
-      <label>What are you interested in? <span class="muted" style="font-weight:400;">(pick as many as you like)</span></label>
-      <div class="category-grid" style="margin-top:8px;">
+
+    <div class="field-group">
+      <h2 class="block-label">Interests <span class="muted">· pick as many as you like</span></h2>
+      <div class="category-grid">
         {% for cat in categories %}
-          <div class="category-check">
+          <label class="category-check" for="cat-{{ loop.index }}">
             <input type="checkbox" id="cat-{{ loop.index }}" name="categories" value="{{ cat }}" {{ 'checked' if cat in selected_categories }}>
-            <label for="cat-{{ loop.index }}">{{ cat }}</label>
-          </div>
+            <span>{{ cat }}</span>
+          </label>
         {% endfor %}
       </div>
     </div>
 
-    <div class="field">
-      <label for="major">What's your major?</label>
-      <select id="major" name="major">
+    <div class="field-group">
+      <h2 class="block-label">Major</h2>
+      <select id="major" name="major" aria-label="Your major">
         <option value="">Prefer not to say</option>
         {% for m in majors %}
           <option value="{{ m }}" {{ 'selected' if m == current_major }}>{{ m }}</option>
@@ -32,25 +36,28 @@
       </select>
     </div>
 
-    <div class="field">
-      <label>How much time can you commit?</label>
-      <div class="radio-cards">
-        <div class="radio-card">
-          <input type="radio" id="low" name="time_commitment" value="low" {{ 'checked' if current_commitment == 'low' }}>
-          <label for="low">Low key<br><span class="muted" style="font-weight:400; font-size:0.78rem;">drop in when I can</span></label>
-        </div>
-        <div class="radio-card">
-          <input type="radio" id="medium" name="time_commitment" value="medium" {{ 'checked' if current_commitment == 'medium' }}>
-          <label for="medium">Regular<br><span class="muted" style="font-weight:400; font-size:0.78rem;">weekly meetings</span></label>
-        </div>
-        <div class="radio-card">
-          <input type="radio" id="high" name="time_commitment" value="high" {{ 'checked' if current_commitment == 'high' }}>
-          <label for="high">All in<br><span class="muted" style="font-weight:400; font-size:0.78rem;">competitive / team</span></label>
-        </div>
+    <div class="field-group">
+      <h2 class="block-label">Time you can give</h2>
+      <div class="radio-cards three" role="radiogroup" aria-label="Time commitment">
+        <label class="radio-card">
+          <input type="radio" name="time_commitment" value="low" {{ 'checked' if current_commitment == 'low' }}>
+          <strong>Low key</strong>
+          <span>Drop in when I can</span>
+        </label>
+        <label class="radio-card">
+          <input type="radio" name="time_commitment" value="medium" {{ 'checked' if current_commitment == 'medium' }}>
+          <strong>Regular</strong>
+          <span>Weekly meetings</span>
+        </label>
+        <label class="radio-card">
+          <input type="radio" name="time_commitment" value="high" {{ 'checked' if current_commitment == 'high' }}>
+          <strong>All in</strong>
+          <span>Competitive or team</span>
+        </label>
       </div>
     </div>
 
-    <button type="submit" class="btn btn-brand btn-block">Show me my matches</button>
+    <button type="submit" class="btn btn-block">Show me my matches</button>
     <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost btn-block" style="margin-top:0.5rem;">Skip for now — just browse</a>
   </form>
 </section>

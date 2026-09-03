@@ -7,14 +7,14 @@
     <div>
       <span class="page-kicker">Every UW club, one place</span>
       <h1>Find your people. Run your club.</h1>
-      <p class="hero-sub">Eventully is where UW's {{ stats.total_clubs }} registered student organizations and their events live — matched to what you actually care about.</p>
+      <p class="hero-sub">Eventully is where UW's {{ stats.total_clubs|commas }} registered student organizations and their events live — matched to what you actually care about.</p>
       <div class="hero-actions">
         <a href="{{ url_for('auth.register') }}" class="btn btn-brand">Find clubs</a>
         <a href="{{ url_for('auth.register', next=url_for('clubs.browse', status='unclaimed')) }}" class="btn btn-outline">I run a club</a>
         <a href="{{ url_for('clubs.browse') }}" class="btn btn-ghost">Just browse →</a>
       </div>
       <div class="hero-stats" aria-label="Eventully platform stats">
-        <div><strong>{{ stats.total_clubs }}</strong><span>Clubs indexed</span></div>
+        <div><strong>{{ stats.total_clubs|commas }}</strong><span>Clubs indexed</span></div>
         <div><strong>{{ stats.categories }}</strong><span>Categories</span></div>
         {% if stats.total_events %}<div><strong>{{ stats.total_events }}</strong><span>Upcoming events</span></div>{% endif %}
         <div><strong>.edu</strong><span>Students only</span></div>

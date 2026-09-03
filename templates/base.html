@@ -29,7 +29,7 @@
       <nav aria-label="Primary" style="display:contents;">
         <ul class="nav-links">
           {% if current_user.is_authenticated %}
-            <li><a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">Home</a></li>
+            <li><a href="{{ url_for('main.dashboard') }}" class="nav-home {{ 'active' if request.endpoint == 'main.dashboard' }}">Home</a></li>
             <li><a href="{{ url_for('events.browse') }}" class="{{ 'active' if request.blueprint == 'events' or request.endpoint == 'main.calendar' }}">Events</a></li>
             <li><a href="{{ url_for('clubs.browse') }}" class="{{ 'active' if request.blueprint == 'clubs' }}">Clubs</a></li>
             <li><a href="{{ url_for('messages.inbox') }}" class="{{ 'active' if request.blueprint == 'messages' }}">Messages{% if unread_threads %} <span class="nav-badge">{{ unread_threads }}</span>{% endif %}</a></li>
@@ -128,6 +128,12 @@
     })();
     var stream = document.querySelector(".message-stream");
     if (stream) stream.scrollTop = stream.scrollHeight;
+    // A cover photo that 404s or is blocked drops out so the generated art
+    // beneath shows instead of the browser's broken-image glyph.
+    document.addEventListener("error", function (e) {
+      var el = e.target;
+      if (el && el.tagName === "IMG" && el.closest(".event-row-thumb, .event-cover")) el.remove();
+    }, true);
     document.addEventListener("submit", function (e) {
       var form = e.target.closest("form[data-confirm]");
       if (form && !window.confirm(form.getAttribute("data-confirm"))) e.preventDefault();

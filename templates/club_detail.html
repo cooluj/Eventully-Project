@@ -7,7 +7,7 @@
   <meta property="og:title" content="{{ club.name }} · Eventully">
   <meta property="og:description" content="{{ club.category }} club at UW{% if club.description %} — {{ club.description[:140] }}{% endif %}">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
+  <meta property="og:image" content="{{ static_url('og.png', _external=True) }}">
   <meta name="twitter:card" content="summary">
 {% endblock %}
 

@@ -2,32 +2,47 @@
 {% block title %}Attendees · {{ event.name }}{% endblock %}
 
 {% block content %}
-<section class="section container" style="max-width:720px;">
-  <span class="eyebrow">{{ event.club.name }}</span>
-  <h2 style="margin-top:8px;">{{ event.name }} — attendee list</h2>
-  <p class="muted">{{ event.weekday }}, {{ event.time }} · {{ event.location }} ·
-    <strong>{{ rsvps|length }}/{{ event.capacity }}</strong> going</p>
+<section class="app-page container-narrow" style="max-width:760px;">
+  <div class="page-hero">
+    <div>
+      <span class="page-kicker">{{ event.club.name }}</span>
+      <h1>{{ event.name }}</h1>
+      <p>{{ event.when_primary }}, {{ event.when_secondary }} · {{ event.location }} ·
+        <strong style="font-weight:500; color:var(--ink);">{{ rsvps|length }}/{{ event.capacity }}</strong> going</p>
+    </div>
+    <div class="pill-row">
+      <a href="{{ url_for('events.detail', event_id=event.id) }}" class="btn btn-ghost btn-sm">View event</a>
+      {% if rsvps %}<a href="{{ url_for('officer.attendees_csv', event_id=event.id) }}" class="btn btn-outline btn-sm">Download CSV</a>{% endif %}
+    </div>
+  </div>
 
   {% if rsvps %}
-    <table class="data-table" style="margin-top:20px;">
-      <tr><th>#</th><th>Name</th><th>Email</th><th>RSVP'd</th></tr>
-      {% for r in rsvps %}
-        <tr>
-          <td class="mono">{{ loop.index }}</td>
-          <td>{{ r.user.name }}</td>
-          <td><a href="mailto:{{ r.user.email }}" style="color:var(--purple);">{{ r.user.email }}</a></td>
-          <td class="mono muted">{{ r.created_at.strftime("%b %d") }}</td>
-        </tr>
-      {% endfor %}
-    </table>
-    <p class="hint" style="margin-top:14px;">Attendee emails are shown so you can send updates about this event — please don't use them for anything else.</p>
+    <div class="card table-card">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Registered</th></tr></thead>
+          <tbody>
+          {% for r in rsvps %}
+            <tr>
+              <td class="mono muted">{{ loop.index }}</td>
+              <td>{{ r.user.name }}</td>
+              <td><a href="mailto:{{ r.user.email }}">{{ r.user.email }}</a></td>
+              <td class="muted">{{ r.created_at|short_datetime }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:0.75rem;">Attendee emails are shown so you can send updates about this event. Please don't use them for anything else.</p>
   {% else %}
-    <div class="empty-state" style="margin-top:24px;">
-      <h3>No RSVPs yet</h3>
-      <p>Share the event page with your members — RSVPs will show up here.</p>
+    <div class="empty-state card">
+      <h3>No registrations yet</h3>
+      <p>Share the event page with your members. Registrations show up here.</p>
+      <a href="{{ url_for('events.detail', event_id=event.id) }}" class="btn btn-ghost">View event page</a>
     </div>
   {% endif %}
 
-  <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-sm" style="margin-top:20px;">← Back to officer dashboard</a>
+  <a href="{{ url_for('officer.dashboard') }}" class="btn btn-ghost btn-sm" style="margin-top:1.25rem;">← Officer tools</a>
 </section>
 {% endblock %}

@@ -6,7 +6,7 @@
 <section class="app-page container-narrow">
   <div class="page-hero">
     <div>
-      <span class="page-kicker">{{ events|length }} upcoming</span>
+      <span class="page-kicker">{{ events|length }} this {{ 'week' if not window_label else 'page' }}{% if total_upcoming > events|length %} · {{ total_upcoming|commas }} upcoming{% endif %}</span>
       <h1>Events</h1>
       <p>What's happening across UW's clubs — workshops, socials, matches, and meetings.</p>
     </div>

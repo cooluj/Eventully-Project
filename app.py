@@ -103,6 +103,13 @@ def create_app(config_class=Config):
         months = days // 30
         return f"{months} month{'s' if months > 1 else ''} ago"
 
+    @app.template_filter("commas")
+    def commas(value):
+        try:
+            return f"{int(value):,}"
+        except (TypeError, ValueError):
+            return value
+
     @app.template_filter("short_datetime")
     def short_datetime(dt):
         # DB timestamps are naive UTC; students read Pacific wall time.

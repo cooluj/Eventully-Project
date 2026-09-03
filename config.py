@@ -35,6 +35,9 @@ class Config:
         "application/json", "application/javascript", "application/xml",
         "application/manifest+json", "image/svg+xml",
     ]
+    # Static files take Flask-Compress's streaming path, which has its own
+    # algorithm list (no gzip there; every current browser speaks Brotli).
+    COMPRESS_ALGORITHM_STREAMING = ["br", "deflate"]
     COMPRESS_MIN_SIZE = 600
     COMPRESS_BR_LEVEL = 5
 

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% from "_macros.html" import club_card with context %}
+{% from "_macros.html" import club_card, icon with context %}
 {% block title %}Claim your club{% endblock %}
 
 {% block meta %}
   <meta name="description" content="Run a UW club? Claim your free Eventully listing: post events students can register for, message members, and manage your officer team.">
   <meta property="og:title" content="Claim your club on Eventully">
-  <meta property="og:description" content="{{ unclaimed_count }} UW clubs are waiting for their officers. Claiming takes two minutes and is free forever.">
+  <meta property="og:description" content="{{ unclaimed_count|commas }} UW clubs are waiting for their officers. Claiming takes two minutes and is free forever.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
+  <meta property="og:image" content="{{ static_url('og.png', _external=True) }}">
   <meta name="twitter:card" content="summary_large_image">
 {% endblock %}
 
@@ -15,7 +15,7 @@
 <section class="landing-hero container-narrow" style="padding-bottom:1.5rem;">
   <span class="page-kicker">For officers</span>
   <h1>Your club already has a page here. Claim it.</h1>
-  <p class="hero-sub">Every registered UW club is listed on Eventully — {{ unclaimed_count }} are still waiting for their officers. Claiming is free forever and takes about two minutes.</p>
+  <p class="hero-sub">Every registered UW club is listed on Eventully — {{ unclaimed_count|commas }} are still waiting for their officers. Claiming is free forever and takes about two minutes.</p>
   <div class="hero-actions">
     <a href="{{ url_for('clubs.browse', status='unclaimed') }}" class="btn btn-brand">Find your club</a>
     {% if not current_user.is_authenticated %}
@@ -26,17 +26,20 @@
 
 <section class="container-narrow" style="padding-bottom:1rem;">
   <div class="club-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
-    <div class="card" style="padding:1rem;">
-      <h3 style="font-weight:500;">📣 Post events</h3>
-      <p class="muted" style="margin:0; font-size:var(--text-sm);">One-time or weekly, with registration, capacity, and automatic member notifications.</p>
+    <div class="card feature-card">
+      <span class="icon-tile">{{ icon("calendar") }}</span>
+      <h3>Post events</h3>
+      <p class="muted">One-time or weekly, with registration, capacity, and automatic member notifications.</p>
     </div>
-    <div class="card" style="padding:1rem;">
-      <h3 style="font-weight:500;">🔗 One link for everything</h3>
-      <p class="muted" style="margin:0; font-size:var(--text-sm);">A page worth putting in your Instagram bio — events, info, socials, and a join button.</p>
+    <div class="card feature-card">
+      <span class="icon-tile">{{ icon("arrow-up-right") }}</span>
+      <h3>One link for everything</h3>
+      <p class="muted">A page worth putting in your Instagram bio: events, info, socials, and a join button.</p>
     </div>
-    <div class="card" style="padding:1rem;">
-      <h3 style="font-weight:500;">💬 Reach your members</h3>
-      <p class="muted" style="margin:0; font-size:var(--text-sm);">Announcements go to every member, in-app and by email. RSVPs export when you need a door list.</p>
+    <div class="card feature-card">
+      <span class="icon-tile">{{ icon("people") }}</span>
+      <h3>Reach your members</h3>
+      <p class="muted">Announcements go to every member, in-app and by email. Download the attendee list when you need a door list.</p>
     </div>
   </div>
 </section>

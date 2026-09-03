@@ -678,7 +678,8 @@ def test_admin_revokes_officer(client, app):
 
     register(client, email="admin@uw.edu", name="Site Admin")
     html = client.get("/admin/claims").get_data(as_text=True)
-    assert "Claimed clubs (1)" in html
+    assert "Claimed clubs" in html
+    assert "Revoke" in html
     resp = post(client, "/admin/clubs/1/revoke", "/admin/claims")
     assert "no longer the officer" in resp.get_data(as_text=True)
     with app.app_context():
@@ -797,7 +798,7 @@ def test_member_and_officer_can_use_club_messages(client, app):
     register(client, email="member@uw.edu", name="Member Student")
     post(client, "/club/1/join", "/club/1")
     html = client.get("/messages/club/1").get_data(as_text=True)
-    assert "Club messages" in html
+    assert "<h1>Messages</h1>" in html
     assert "Message Robotics Club" in html
 
     resp = post(client, "/messages/club/1", "/messages/club/1", body="Can I come to the next meeting?")
@@ -1156,9 +1157,10 @@ def test_static_assets_are_versioned_and_immutable(client):
     html = client.get("/login").get_data(as_text=True)
     match = re.search(r'href="(/static/css/style\.css\?v=[0-9a-f]{10})"', html)
     assert match, "stylesheet link should carry a content hash"
-    resp = client.get(match.group(1))
+    resp = client.get(match.group(1), headers={"Accept-Encoding": "gzip, deflate, br, zstd"})
     assert resp.status_code == 200
     assert resp.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    assert resp.headers.get("Content-Encoding") == "br"
     unversioned = client.get("/static/css/style.css")
     assert unversioned.headers["Cache-Control"] == "public, max-age=3600"
 
@@ -1200,7 +1202,7 @@ def test_attendee_previews_batch_and_order(client, app):
     assert "+2" in html  # 7 attendees, 5 shown
 
 
-def test_timeline_pages_two_weeks_at_a_time(client, app):
+def test_timeline_pages_one_week_at_a_time(client, app):
     from datetime import timedelta
     from utils import campus_now
     now = campus_now()
@@ -1260,3 +1262,54 @@ def test_search_page_is_never_compressed(client):
     assert resp.status_code == 200
     assert resp.headers.get("Content-Encoding") is None
     assert "Robotics Club" in resp.get_data(as_text=True)
+
+
+def test_officer_can_download_attendee_and_member_csv(client, app):
+    with app.app_context():
+        owner = User(email="owner@uw.edu", name="Owner")
+        owner.set_password("testpass123")
+        member = User(email="=cmd()|'/C calc'!A0@uw.edu", name="=HYPERLINK(\"x\")")
+        member.set_password("testpass123")
+        db.session.add_all([owner, member])
+        db.session.flush()
+        club = Club.query.get(1)
+        club.officer_id = owner.id
+        event = Event(club_id=1, name="Door List Night", capacity=10)
+        db.session.add(event)
+        db.session.flush()
+        db.session.add(RSVP(event_id=event.id, user_id=member.id))
+        db.session.add(Membership(user_id=member.id, club_id=1))
+        db.session.commit()
+        event_id = event.id
+
+    login(client, "owner@uw.edu")
+    resp = client.get(f"/officer/event/{event_id}/attendees.csv")
+    assert resp.status_code == 200
+    assert resp.mimetype == "text/csv"
+    assert "attachment" in resp.headers["Content-Disposition"]
+    body = resp.get_data(as_text=True)
+    assert body.startswith("Name,Email,Registered")
+    assert "'=HYPERLINK" in body  # formula-injection neutralized
+    assert "'=cmd()" in body
+
+    resp = client.get("/officer/club/1/members.csv")
+    assert resp.status_code == 200
+    assert "Name,Email,Joined" in resp.get_data(as_text=True)
+
+    # A student who isn't an officer gets nothing
+    client.get("/logout")
+    register(client, email="nosy@uw.edu")
+    assert client.get(f"/officer/event/{event_id}/attendees.csv").status_code == 403
+    assert client.get("/officer/club/1/members.csv").status_code == 403
+
+
+def test_register_honors_next_from_the_form(client):
+    html = client.get("/register?next=/claim").get_data(as_text=True)
+    assert 'name="next" value="/claim"' in html
+    token = TOKEN_RE.search(html).group(1)
+    resp = client.post("/register", data={
+        "csrf_token": token, "email": "officer2@uw.edu", "name": "Off Two",
+        "password": "testpass123", "confirm_password": "testpass123", "next": "/claim",
+    })
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/claim")

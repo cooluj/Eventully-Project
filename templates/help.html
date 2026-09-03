@@ -1,93 +1,103 @@
 {% extends "base.html" %}
-{% block title %}Help & FAQ{% endblock %}
+{% block title %}Help{% endblock %}
 
 {% block content %}
-<section class="section container" style="max-width:760px;">
-  <span class="eyebrow">Support</span>
-  <h1 style="margin-top:8px; font-size:clamp(1.8rem,3.5vw,2.4rem);">Help & FAQ</h1>
-  <p class="muted" style="margin-bottom:28px;">Quick answers to the most common questions.</p>
+<section class="app-page container-narrow" style="max-width:720px;">
+  <div class="page-hero">
+    <div>
+      <span class="page-kicker">Support</span>
+      <h1>Help &amp; FAQ</h1>
+      <p>Quick answers to the questions we get most.</p>
+    </div>
+  </div>
 
-  <div class="faq">
-    <h3 style="margin:18px 0 12px;">For students</h3>
-    <details>
+  <div class="faq-group">
+    <h2 class="block-label">For students</h2>
+    <details class="faq">
       <summary>How do club recommendations work?</summary>
-      <div>You answer three questions — interests, major, and time commitment. Every club in the
+      <div>You answer three questions: interests, major, and time commitment. Every club in the
         directory gets a score from category fit, major keyword overlap, and time-commitment clues.
         Time alone is never enough to recommend a club. We show the score and the reasons on every
         match. No black box.</div>
     </details>
-    <details>
+    <details class="faq">
       <summary>What does joining a club on Eventully do?</summary>
-      <div>It adds the club to your dashboard and unlocks its members-only events. It doesn't
-        replace the club's own signup — think of it as following the club here. The club's officer
-        can see the member count.</div>
+      <div>It adds the club to your home page and unlocks its members-only events and message
+        thread. It doesn't replace the club's own signup. Think of it as following the club here;
+        the officers can see the member count.</div>
     </details>
-    <details>
-      <summary>What's the difference between saving (♡) and joining?</summary>
-      <div>Saving is a private bookmark — a shortlist while you're exploring. Joining tells the club
+    <details class="faq">
+      <summary>What's the difference between saving and joining?</summary>
+      <div>Saving is a private bookmark, a shortlist while you're exploring. Joining tells the club
         you're in and shows you its events. Save first, join when you're sure.</div>
     </details>
-    <details>
-      <summary>How do RSVPs work?</summary>
-      <div>Hit RSVP on any event page and you're on the list — the counter updates live and events
-        close automatically at capacity. You can cancel anytime. Add events to your calendar with
-        the Google Calendar button or the .ics download (Apple/Outlook).</div>
+    <details class="faq">
+      <summary>How does registering for an event work?</summary>
+      <div>Hit Register on any event page and you're on the list. Events close automatically at
+        capacity, and you can cancel any time. Add events to your calendar with the Google Calendar
+        button or the .ics download, or subscribe once to your personal feed from the This week page
+        so every registration shows up automatically.</div>
     </details>
-    <details>
+    <details class="faq">
       <summary>Why did a club I dismissed disappear from my matches?</summary>
       <div>Pressing × on a recommendation tells us not to show that club again. It's still in the
-        directory and search — just not in your matches.</div>
-    </details>
-
-    <h3 style="margin:28px 0 12px;">For club officers</h3>
-    <details>
-      <summary>How do I claim my club?</summary>
-      <div>Create an account with your .edu email, find your club in the directory, and hit
-        "I'm an officer — claim this club." Tell us your role and how we can verify it. A human
-        reviews every claim, usually within a day or two.</div>
-    </details>
-    <details>
-      <summary>What do I get once my claim is approved?</summary>
-      <div>An Officer dashboard: edit your club's description, meeting time, dues, weekly hours,
-        website, Instagram, and contact email. Post events with capacity limits, see live RSVP
-        counts, and view the attendee list (names and emails) for every event you post.</div>
-    </details>
-    <details>
-      <summary>Someone else claimed my club — what do I do?</summary>
-      <div>Contact us and we'll sort it out. Claims are reviewed manually, but if a mistake slipped
-        through we can reassign the listing.</div>
-    </details>
-
-    <h3 style="margin:28px 0 12px;">Account & privacy</h3>
-    <details>
-      <summary>Why do I need a .edu email?</summary>
-      <div>It keeps the community limited to real students, which keeps club data and RSVP lists
-        meaningful. Your email is only visible to officers of events you RSVP to.</div>
-    </details>
-    <details>
-      <summary>What data do you keep?</summary>
-      <div>Your name, email, hashed password, quiz answers, and your club/event activity. That's it —
-        no ads, no tracking pixels, no selling data. Delete requests are honored, always.</div>
-    </details>
-    <details>
-      <summary>How do I change my name or password?</summary>
-      <div>Click your avatar in the top-right → Settings. You can also retake the match survey from
-        there anytime.</div>
-    </details>
-    <details>
-      <summary>I forgot my password.</summary>
-      <div>Use the "Forgot your password?" link on the login page — we'll email you a reset link
-        that's valid for one hour.</div>
-    </details>
-    <details>
-      <summary>How do I delete my account?</summary>
-      <div>Settings → Delete account. It permanently removes your profile, memberships, RSVPs, and
-        saved clubs. Clubs you officer become unclaimed listings again.</div>
+        directory and search, just not in your matches.</div>
     </details>
   </div>
 
-  <div class="panel panel-dashed" style="margin-top:32px; text-align:center;">
-    <p style="margin:0;"><strong>Still stuck?</strong> <span class="muted">Reach out and a human will get back to you.</span></p>
+  <div class="faq-group">
+    <h2 class="block-label">For club officers</h2>
+    <details class="faq">
+      <summary>How do I claim my club?</summary>
+      <div>Create an account with your .edu email, find your club in the directory, and hit
+        “I'm an officer — claim this club.” Tell us your role and how we can verify it. A person
+        reviews every claim, usually within a day.</div>
+    </details>
+    <details class="faq">
+      <summary>What do I get once my claim is approved?</summary>
+      <div>Officer tools: edit your club's description, meeting time, dues, hours, website, Instagram,
+        and contact email. Post one-time or weekly events with capacity limits, see live registration
+        counts, download the attendee list, message members, and add co-officers.</div>
+    </details>
+    <details class="faq">
+      <summary>Someone else claimed my club. What do I do?</summary>
+      <div>Contact us and we'll sort it out. Claims are reviewed by hand, but if a mistake slipped
+        through we can reassign the listing.</div>
+    </details>
+  </div>
+
+  <div class="faq-group">
+    <h2 class="block-label">Account &amp; privacy</h2>
+    <details class="faq">
+      <summary>Why do I need a .edu email?</summary>
+      <div>It keeps the community to real students, which keeps club data and registration lists
+        meaningful. Your email is only visible to officers of events you register for.</div>
+    </details>
+    <details class="faq">
+      <summary>What data do you keep?</summary>
+      <div>Your name, email, hashed password, survey answers, and your club and event activity. No
+        ads, no tracking pixels, no selling data. Delete requests are always honored.</div>
+    </details>
+    <details class="faq">
+      <summary>How do I change my name or password?</summary>
+      <div>Click your avatar in the top right for Settings. You can also retake the match survey
+        from there any time.</div>
+    </details>
+    <details class="faq">
+      <summary>I forgot my password.</summary>
+      <div>Use the “Forgot it?” link on the login page. We'll email you a reset link that's valid
+        for one hour.</div>
+    </details>
+    <details class="faq">
+      <summary>How do I delete my account?</summary>
+      <div>Settings, then Delete account. It permanently removes your profile, memberships,
+        registrations, and saved clubs. Clubs you officer become unclaimed listings again.</div>
+    </details>
+  </div>
+
+  <div class="card panel-dashed" style="text-align:center;">
+    <strong style="font-weight:500;">Still stuck?</strong>
+    <span class="muted"> Reach out and a person will get back to you.</span>
   </div>
 </section>
 {% endblock %}
