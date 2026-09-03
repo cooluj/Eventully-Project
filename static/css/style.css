@@ -476,6 +476,15 @@ svg { width: 1em; height: 1em; stroke: currentColor; fill: none; vertical-align:
   background-image: var(--cover-art);
   text-shadow: 0 1px 12px hsl(var(--hue) 60% 20% / 0.45);
 }
+/* Real photos are <img> (lazy below the fold, alt text, async decode) laid
+   over the generated art, which shows while it loads or if it 404s. */
+.event-row-thumb img, .event-cover img {
+  display: block; width: 100%; height: 100%; object-fit: cover;
+  border-radius: inherit;
+}
+.event-row-thumb:not(.placeholder), .event-cover:not(.placeholder) {
+  background-image: var(--cover-art); overflow: hidden;
+}
 
 @media (max-width: 560px) {
   .event-row-thumb { width: 84px; height: 84px; }
@@ -511,6 +520,13 @@ svg { width: 1em; height: 1em; stroke: currentColor; fill: none; vertical-align:
 .timeline-day-head strong { font-size: var(--text-md); font-weight: 500; color: var(--ink); }
 .timeline-day-head span { font-size: var(--text-md); font-weight: 400; color: var(--meta); }
 .timeline-day .cards { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.window-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  margin: 0 0 1rem; font-size: var(--text-sm); color: var(--meta);
+}
+.window-head span { font-weight: 500; color: var(--ink-2); }
+.window-nav { display: flex; justify-content: space-between; margin-top: 1.5rem; }
 
 /* ---------- Segmented control (event tabs etc.) ---------- */
 .event-tabs, .segmented {

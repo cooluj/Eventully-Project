@@ -18,7 +18,25 @@ class Config:
             "postgres://", "postgresql://", 1
         )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Managed Postgres drops idle connections during maintenance; pre-ping
+    # swaps a dead pooled connection for a fresh one instead of 500ing the
+    # first request after a restart. Recycle well under any proxy idle cap.
+    SQLALCHEMY_ENGINE_OPTIONS = (
+        {"pool_pre_ping": True, "pool_recycle": 280, "pool_size": 5, "max_overflow": 10}
+        if SQLALCHEMY_DATABASE_URI.startswith("postgresql") else {}
+    )
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)
+
+    # Compression (Flask-Compress): Brotli for browsers that ask for it,
+    # gzip otherwise. HTML pages run 30-180KB raw; ~10x smaller on the wire.
+    COMPRESS_ALGORITHM = ["br", "gzip"]
+    COMPRESS_MIMETYPES = [
+        "text/html", "text/css", "text/plain", "text/xml", "text/calendar",
+        "application/json", "application/javascript", "application/xml",
+        "application/manifest+json", "image/svg+xml",
+    ]
+    COMPRESS_MIN_SIZE = 600
+    COMPRESS_BR_LEVEL = 5
 
     # Cookie hardening. SECURE_COOKIES must be "true" in production (HTTPS) —
     # render.yaml sets it; leaving it off locally keeps http://127.0.0.1 working.

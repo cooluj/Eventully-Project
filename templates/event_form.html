@@ -79,7 +79,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
   (function () {
     var once = document.getElementById("once-fields");
     var weekly = document.getElementById("weekly-fields");

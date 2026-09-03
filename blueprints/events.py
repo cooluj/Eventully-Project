@@ -2,10 +2,22 @@ from flask import Blueprint, Response, abort, current_app, flash, redirect, rend
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import RSVP, Club, Event
-from utils import WEEKDAYS, build_calendar_link, build_ics, group_events_by_day, split_upcoming
+from models import RSVP, Club, Event, load_attendee_previews
+from utils import (WEEKDAYS, build_calendar_link, build_ics, campus_now, group_events_by_day,
+                   split_upcoming, ttl_cached, window_events)
 
 bp = Blueprint("events", __name__)
+
+# Timeline pages two weeks at a time: every weekly event lands exactly once
+# per window, and the page stays readable when hundreds of clubs post.
+WINDOW_DAYS = 14
+
+
+def category_list():
+    return ttl_cached(
+        "club-categories", 600,
+        lambda: [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()],
+    )
 
 
 def _visible_events_query():
@@ -38,6 +50,8 @@ def _visible_event_or_404(event_id):
 
 @bp.route("/events")
 def browse():
+    from datetime import datetime, timedelta
+
     category = request.args.get("category", "all")
     day = request.args.get("day", "all")
     scope = request.args.get("scope", "all")
@@ -45,7 +59,9 @@ def browse():
     if scope not in allowed_scopes:
         scope = "all"
 
-    rsvp_ids = {r.event_id for r in current_user.rsvps} if current_user.is_authenticated else set()
+    rsvp_ids = (
+        {r.event_id for r in current_user.rsvps} if current_user.is_authenticated else set()
+    )
 
     query = _visible_events_query()
     if scope == "public":
@@ -60,25 +76,44 @@ def browse():
     if day != "all":
         query = query.filter(Event.weekday == day)
 
-    # Cards touch event.club and event.rsvps[n].user — load them up front
-    # instead of one lazy query per card.
-    from sqlalchemy.orm import joinedload, selectinload
-    from models import RSVP as RSVPModel
-    query = query.options(
-        joinedload(Event.club),
-        selectinload(Event.rsvps).joinedload(RSVPModel.user),
-    )
+    now = campus_now()
+    today = now.date()
+    try:
+        window_start_day = datetime.strptime(request.args.get("from", ""), "%Y-%m-%d").date()
+    except ValueError:
+        window_start_day = today
+    if window_start_day <= today:
+        window_start_day = today
+        window_start = now  # nothing earlier than right now on the first page
+    else:
+        window_start = datetime.combine(window_start_day, datetime.min.time())
+    window_end = datetime.combine(window_start_day + timedelta(days=WINDOW_DAYS), datetime.min.time())
 
-    upcoming, past = split_upcoming(query.all())
-    day_groups = group_events_by_day(upcoming)
-    categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
+    upcoming, past = split_upcoming(query.all(), now)
+    visible = window_events(upcoming, window_start, window_end)
+    past = past[:12] if window_start_day == today else []
+    load_attendee_previews(visible + past)
+    day_groups = group_events_by_day(visible, now=now, start=window_start)
+
+    later_exists = any(e.next_occurrence(window_start) >= window_end for e in upcoming)
+    filters = {k: v for k, v in (("category", category), ("day", day), ("scope", scope)) if v != "all"}
+    later_url = url_for("events.browse", **filters, **{"from": (window_start_day + timedelta(days=WINDOW_DAYS)).isoformat()}) if later_exists else None
+    earlier_day = window_start_day - timedelta(days=WINDOW_DAYS)
+    earlier_url = None
+    if window_start_day > today:
+        earlier_url = url_for("events.browse", **filters, **({"from": earlier_day.isoformat()} if earlier_day > today else {}))
+
+    window_label = None
+    if window_start_day > today:
+        last = window_start_day + timedelta(days=WINDOW_DAYS - 1)
+        window_label = f"{window_start_day.strftime('%b %d').replace(' 0', ' ')} – {last.strftime('%b %d').replace(' 0', ' ')}"
 
     return render_template(
         "events.html",
-        events=upcoming,
+        events=visible,
         day_groups=day_groups,
-        past_events=past[:12],
-        categories=categories,
+        past_events=past,
+        categories=["all"] + category_list(),
         days=["all"] + WEEKDAYS,
         scopes=[
             ("all", "All"),
@@ -90,6 +125,10 @@ def browse():
         current_category=category,
         current_day=day,
         rsvp_ids=rsvp_ids,
+        later_url=later_url,
+        earlier_url=earlier_url,
+        window_label=window_label,
+        total_upcoming=len(upcoming),
     )
 
 
@@ -97,6 +136,7 @@ def browse():
 def detail(event_id):
     event = _visible_event_or_404(event_id)
     is_rsvpd = current_user.is_authenticated and RSVP.query.filter_by(event_id=event.id, user_id=current_user.id).first() is not None
+    load_attendee_previews([event])
     return render_template(
         "event_detail.html", event=event, is_rsvpd=is_rsvpd, calendar_link=build_calendar_link(event)
     )

@@ -80,7 +80,7 @@
           <td class="mono">{{ club.claimed_at.strftime('%b %d, %Y') if club.claimed_at }}</td>
           <td>
             <form method="POST" action="{{ url_for('admin.revoke', club_id=club.id) }}"
-                  onsubmit="return confirm('Remove this officer? The listing becomes unclaimed.');">
+                  data-confirm="Remove this officer? The listing becomes unclaimed.">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red); border-color:#efc4c0;">Revoke</button>
             </form>
@@ -90,7 +90,7 @@
     </table>
   {% endif %}
 </section>
-<script>
+<script nonce="{{ csp_nonce() }}">
   document.querySelectorAll(".claim-decision-form").forEach(function (form) {
     form.addEventListener("submit", function () {
       var panel = form.closest(".panel");

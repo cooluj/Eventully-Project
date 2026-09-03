@@ -39,9 +39,10 @@
 {% block content %}
 <div class="event-page">
   <div class="event-page-left">
-    <div class="event-cover {{ 'placeholder' if not event.image_url }}"
-         {% if event.image_url %}style="background-image:url('{{ event.image_url }}'), var(--cover-art)"{% endif %}>
-      {%- if not event.image_url %}{{ event.club.avatar_letter }}{% endif -%}
+    <div class="event-cover {{ 'placeholder' if not event.image_url }}">
+      {%- if event.image_url -%}
+        <img src="{{ event.image_url }}" alt="{{ event.name }}" fetchpriority="high" decoding="async">
+      {%- else -%}{{ event.club.avatar_letter }}{%- endif -%}
     </div>
 
     <div class="side-block">

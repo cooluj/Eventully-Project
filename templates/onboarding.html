@@ -57,7 +57,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
   document.getElementById("onboarding-form").addEventListener("submit", function (e) {
     var any = this.querySelectorAll('input[name="categories"]:checked').length > 0;
     var major = this.querySelector('select[name="major"]').value;

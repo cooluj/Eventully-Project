@@ -1137,3 +1137,126 @@ def test_search_ranks_name_hits_first(client, app):
     html = client.get("/search?q=chess").get_data(as_text=True)
     # Name match (Chess Society) must appear before the description-only match
     assert html.index("Chess Society") < html.index("Quantum Computing Club")
+
+
+# ---------- Performance & delivery ----------
+
+def test_responses_are_compressed_when_asked(client):
+    resp = client.get("/help", headers={"Accept-Encoding": "br"})
+    assert resp.headers.get("Content-Encoding") == "br"
+    assert "Accept-Encoding" in resp.headers.get("Vary", "")
+    resp = client.get("/help", headers={"Accept-Encoding": "gzip"})
+    assert resp.headers.get("Content-Encoding") == "gzip"
+    plain = client.get("/help")
+    assert plain.headers.get("Content-Encoding") is None
+    assert "How do club recommendations work?" in plain.get_data(as_text=True)
+
+
+def test_static_assets_are_versioned_and_immutable(client):
+    html = client.get("/login").get_data(as_text=True)
+    match = re.search(r'href="(/static/css/style\.css\?v=[0-9a-f]{10})"', html)
+    assert match, "stylesheet link should carry a content hash"
+    resp = client.get(match.group(1))
+    assert resp.status_code == 200
+    assert resp.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    unversioned = client.get("/static/css/style.css")
+    assert unversioned.headers["Cache-Control"] == "public, max-age=3600"
+
+
+def test_pages_are_private_and_revalidated(client):
+    register(client)
+    resp = client.get("/dashboard")
+    assert resp.headers["Cache-Control"] == "private, no-cache"
+
+
+def test_attendee_previews_batch_and_order(client, app):
+    from models import load_attendee_previews
+    with app.app_context():
+        event = Event(club_id=1, name="Big Night", capacity=50)
+        db.session.add(event)
+        db.session.flush()
+        people = []
+        for i in range(7):
+            u = User(email=f"p{i}@uw.edu", name=f"{chr(65 + i)} Person")
+            u.set_password("testpass123")
+            people.append(u)
+        db.session.add_all(people)
+        db.session.flush()
+        from datetime import datetime, timedelta
+        base = datetime(2026, 1, 1)
+        for i, u in enumerate(people):
+            db.session.add(RSVP(event_id=event.id, user_id=u.id, created_at=base + timedelta(minutes=i)))
+        db.session.commit()
+        event_id = event.id
+
+    with app.app_context():
+        events = Event.query.filter_by(id=event_id).all()
+        load_attendee_previews(events, limit=5)
+        names = [u.name for u in events[0].attendee_preview]
+        assert names == ["A Person", "B Person", "C Person", "D Person", "E Person"]
+
+    html = client.get(f"/event/{event_id}").get_data(as_text=True)
+    assert "7 Going" in html
+    assert "+2" in html  # 7 attendees, 5 shown
+
+
+def test_timeline_pages_two_weeks_at_a_time(client, app):
+    from datetime import timedelta
+    from utils import campus_now
+    now = campus_now()
+    with app.app_context():
+        soon = now + timedelta(days=3)
+        later = now + timedelta(days=20)
+        db.session.add(Event(club_id=1, name="Soon Social", starts_at=soon.replace(hour=18, minute=0), weekday=soon.strftime("%A"), time="18:00"))
+        db.session.add(Event(club_id=1, name="Later Summit", starts_at=later.replace(hour=18, minute=0), weekday=later.strftime("%A"), time="18:00"))
+        db.session.add(Event(club_id=2, name="Weekly Chess", weekday="Tuesday", time="19:00"))
+        db.session.commit()
+
+    first = client.get("/events").get_data(as_text=True)
+    assert "Soon Social" in first
+    assert "Later Summit" not in first
+    assert "Weekly Chess" in first
+    assert "Later →" in first
+
+    later_from = (now + timedelta(days=14)).date().isoformat()
+    second = client.get(f"/events?from={later_from}").get_data(as_text=True)
+    assert "Later Summit" in second
+    assert "Soon Social" not in second
+    assert "Weekly Chess" in second  # weekly meetings recur into every window
+    assert "← Earlier" in second
+    assert "Past events" not in second
+
+    # Garbage or past `from` values fall back to this week
+    assert "Soon Social" in client.get("/events?from=nope").get_data(as_text=True)
+    assert "Soon Social" in client.get("/events?from=2001-01-01").get_data(as_text=True)
+
+
+def test_calendar_shows_every_weekly_event_once(client, app):
+    from utils import WEEKDAYS
+    with app.app_context():
+        for day in WEEKDAYS:
+            db.session.add(Event(club_id=1, name=f"{day} Standup", weekday=day, time="00:01"))
+            db.session.add(Event(club_id=2, name=f"{day} Nightcap", weekday=day, time="23:59"))
+        db.session.commit()
+    register(client)
+    html = client.get("/calendar").get_data(as_text=True)
+    for day in WEEKDAYS:
+        assert html.count(f"{day} Standup") == 1, day
+        assert html.count(f"{day} Nightcap") == 1, day
+
+
+def test_csp_nonce_covers_inline_scripts(client):
+    resp = client.get("/login")
+    csp = resp.headers["Content-Security-Policy"]
+    nonce = re.search(r"'nonce-([^']+)'", csp).group(1)
+    html = resp.get_data(as_text=True)
+    assert f'<script nonce="{nonce}">' in html
+    assert "onsubmit=" not in html
+    assert "frame-ancestors 'none'" in csp
+
+
+def test_search_page_is_never_compressed(client):
+    resp = client.get("/search?q=robot", headers={"Accept-Encoding": "br, gzip"})
+    assert resp.status_code == 200
+    assert resp.headers.get("Content-Encoding") is None
+    assert "Robotics Club" in resp.get_data(as_text=True)

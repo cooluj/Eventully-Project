@@ -38,19 +38,38 @@
     </div>
   </div>
 
+  {% if window_label %}
+    <div class="window-head">
+      <span>{{ window_label }}</span>
+      <a href="{{ url_for('events.browse', scope=current_scope, category=current_category, day=current_day) }}">Back to this week</a>
+    </div>
+  {% endif %}
+
   {% if not events %}
     <div class="empty-state">
-      <h3>No upcoming events{% if current_category != 'all' or current_day != 'all' %} match those filters{% endif %}</h3>
-      {% if current_category != 'all' or current_day != 'all' %}
-        <p>Try a different day or category.</p>
-        <a href="{{ url_for('events.browse') }}" class="btn btn-ghost">Clear filters</a>
+      {% if window_label %}
+        <h3>Nothing posted for {{ window_label }} yet</h3>
+        <p>Weekly meetings still show every week; one-time events appear once clubs post them.</p>
       {% else %}
-        <p>Run a club? Post the first one — it takes a minute.</p>
-        <a href="{{ url_for('clubs.browse', status='unclaimed') }}" class="btn btn-ghost">Claim your club</a>
+        <h3>No upcoming events{% if current_category != 'all' or current_day != 'all' %} match those filters{% endif %}</h3>
+        {% if current_category != 'all' or current_day != 'all' %}
+          <p>Try a different day or category.</p>
+          <a href="{{ url_for('events.browse') }}" class="btn btn-ghost">Clear filters</a>
+        {% else %}
+          <p>Run a club? Post the first one — it takes a minute.</p>
+          <a href="{{ url_for('clubs.browse', status='unclaimed') }}" class="btn btn-ghost">Claim your club</a>
+        {% endif %}
       {% endif %}
     </div>
   {% else %}
     {{ timeline(day_groups, rsvp_ids=rsvp_ids) }}
+  {% endif %}
+
+  {% if earlier_url or later_url %}
+    <nav class="window-nav" aria-label="Timeline pages">
+      {% if earlier_url %}<a class="btn btn-ghost btn-sm" href="{{ earlier_url }}">← Earlier</a>{% else %}<span></span>{% endif %}
+      {% if later_url %}<a class="btn btn-ghost btn-sm" href="{{ later_url }}">Later →</a>{% endif %}
+    </nav>
   {% endif %}
 
   {% if past_events %}

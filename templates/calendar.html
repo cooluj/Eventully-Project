@@ -48,7 +48,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
   var copyBtn = document.getElementById("copy-feed");
   if (copyBtn) copyBtn.addEventListener("click", function () {
     navigator.clipboard.writeText(copyBtn.dataset.url).then(function () {

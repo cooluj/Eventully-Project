@@ -1,11 +1,27 @@
+import hashlib
 import os
+import secrets
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, g, redirect, render_template, request, url_for
+from flask_compress import Compress
 from flask_wtf.csrf import CSRFError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from extensions import csrf, db, login_manager
+
+
+def _static_versions(static_folder):
+    """filename -> short content hash, computed once at boot. Versioned
+    static URLs can be cached for a year and still update on deploy."""
+    versions = {}
+    for root, _dirs, files in os.walk(static_folder):
+        for name in files:
+            path = os.path.join(root, name)
+            rel = os.path.relpath(path, static_folder).replace(os.sep, "/")
+            with open(path, "rb") as fh:
+                versions[rel] = hashlib.md5(fh.read()).hexdigest()[:10]
+    return versions
 
 
 def create_app(config_class=Config):
@@ -20,6 +36,33 @@ def create_app(config_class=Config):
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
+
+    # Registered before Compress so it runs after it: a view that must not
+    # be compressed (reflected input next to a CSRF token — the BREACH
+    # setup) marks itself "identity"; Flask-Compress then skips it and this
+    # drops the marker so clients never see a non-standard encoding.
+    @app.after_request
+    def strip_identity_marker(response):
+        if response.headers.get("Content-Encoding") == "identity":
+            del response.headers["Content-Encoding"]
+        return response
+
+    Compress(app)
+
+    versions = _static_versions(app.static_folder)
+
+    @app.template_global()
+    def static_url(filename, **kwargs):
+        version = versions.get(filename)
+        if version:
+            kwargs["v"] = version
+        return url_for("static", filename=filename, **kwargs)
+
+    @app.template_global()
+    def csp_nonce():
+        if "csp_nonce" not in g:
+            g.csp_nonce = secrets.token_urlsafe(16)
+        return g.csp_nonce
 
     from models import User
 
@@ -95,7 +138,7 @@ def create_app(config_class=Config):
         from flask_login import current_user
         if not current_user.is_authenticated:
             return {"unread_notifications": 0, "unread_threads": 0}
-        from sqlalchemy import func
+        from sqlalchemy import and_, func, or_
         from models import ClubMessage, Notification, ThreadRead
         unread_notifications = Notification.query.filter_by(
             user_id=current_user.id, read_at=None
@@ -103,20 +146,23 @@ def create_app(config_class=Config):
         club_ids = current_user.joined_club_ids | current_user.managed_club_ids
         unread_threads = 0
         if club_ids:
-            markers = {
-                tr.club_id: tr.last_read_at
-                for tr in ThreadRead.query.filter_by(user_id=current_user.id).all()
-            }
-            latest = (
-                db.session.query(ClubMessage.club_id, func.max(ClubMessage.created_at))
-                .filter(ClubMessage.club_id.in_(club_ids), ClubMessage.sender_id != current_user.id)
-                .group_by(ClubMessage.club_id)
-                .all()
-            )
-            unread_threads = sum(
-                1 for club_id, newest in latest
-                if markers.get(club_id) is None or newest > markers[club_id]
-            )
+            # One statement: newest foreign message per club, outer-joined to
+            # this user's read marker, kept only where it's newer.
+            newest = func.max(ClubMessage.created_at)
+            unread_threads = (
+                db.session.query(func.count())
+                .select_from(
+                    db.session.query(ClubMessage.club_id)
+                    .outerjoin(ThreadRead, and_(ThreadRead.club_id == ClubMessage.club_id,
+                                                ThreadRead.user_id == current_user.id))
+                    .filter(ClubMessage.club_id.in_(club_ids),
+                            ClubMessage.sender_id != current_user.id)
+                    .group_by(ClubMessage.club_id, ThreadRead.last_read_at)
+                    .having(or_(ThreadRead.last_read_at.is_(None), newest > ThreadRead.last_read_at))
+                    .subquery()
+                )
+                .scalar()
+            ) or 0
         return {
             "unread_notifications": unread_notifications,
             "unread_threads": unread_threads,
@@ -157,6 +203,39 @@ def create_app(config_class=Config):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()"
+        )
+        if response.mimetype == "text/html":
+            # Scripts run only with this request's nonce; images may come
+            # from anywhere (officers paste event photo URLs); everything
+            # else stays same-origin. Inline style attributes are part of
+            # the design system (hue tokens), hence 'unsafe-inline' there.
+            nonce = g.get("csp_nonce") or csp_nonce()
+            response.headers.setdefault("Content-Security-Policy", (
+                "default-src 'self'; "
+                f"script-src 'self' 'nonce-{nonce}'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src * data:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "object-src 'none'; base-uri 'self'; form-action 'self'; "
+                "frame-ancestors 'none'; upgrade-insecure-requests"
+            ))
+        return response
+
+    @app.after_request
+    def cache_headers(response):
+        if request.path.startswith("/static/"):
+            if request.args.get("v"):
+                # Content-hashed URL: safe to keep forever, a deploy changes the URL.
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            else:
+                response.headers["Cache-Control"] = "public, max-age=3600"
+        elif "Cache-Control" not in response.headers and response.mimetype == "text/html":
+            # Pages are personal (nav badges, CSRF tokens): always revalidate,
+            # but no-store would break the back/forward cache.
+            response.headers["Cache-Control"] = "private, no-cache"
         return response
 
     @app.cli.command("seed-db")

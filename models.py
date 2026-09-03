@@ -28,16 +28,22 @@ class User(UserMixin, db.Model):
         "UserPreference", backref="user", uselist=False, cascade="all, delete-orphan"
     )
     memberships = db.relationship(
-        "Membership", backref="user", cascade="all, delete-orphan"
+        "Membership", backref=db.backref("user", lazy="joined"), cascade="all, delete-orphan"
     )
-    officer_of = db.relationship("Club", backref="officer", foreign_keys="Club.officer_id")
+    officer_of = db.relationship(
+        "Club", backref=db.backref("officer", lazy="joined"), foreign_keys="Club.officer_id"
+    )
     club_roles = db.relationship(
         "ClubRole",
-        backref="user",
+        backref=db.backref("user", lazy="joined"),
         cascade="all, delete-orphan",
         foreign_keys="ClubRole.user_id",
     )
-    rsvps = db.relationship("RSVP", backref="user", cascade="all, delete-orphan")
+    # RSVP.user and Membership.user load via JOIN: attendee lists, member
+    # tables, and notification fan-outs touch every row's user.
+    rsvps = db.relationship(
+        "RSVP", backref=db.backref("user", lazy="joined"), cascade="all, delete-orphan"
+    )
 
     def set_password(self, raw_password):
         # pbkdf2 instead of Werkzeug's scrypt default: some Python builds
@@ -100,13 +106,16 @@ class Club(db.Model):
     hours_per_week = db.Column(db.String(40), default="")  # e.g. "2 hours/week"
     updated_at = db.Column(db.DateTime, nullable=True)     # last officer edit
 
-    officer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    officer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True, index=True)
     claimed_at = db.Column(db.DateTime, nullable=True)
 
     memberships = db.relationship(
         "Membership", backref="club", cascade="all, delete-orphan"
     )
-    events = db.relationship("Event", backref="club", cascade="all, delete-orphan")
+    # Event.club is a JOIN: no event renders without its host.
+    events = db.relationship(
+        "Event", backref=db.backref("club", lazy="joined"), cascade="all, delete-orphan"
+    )
     roles = db.relationship(
         "ClubRole", backref="club", cascade="all, delete-orphan", foreign_keys="ClubRole.club_id"
     )
@@ -180,14 +189,14 @@ class ClubClaim(db.Model):
     club_id = db.Column(db.Integer, db.ForeignKey("club.id"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     message = db.Column(db.Text, default="")
-    status = db.Column(db.String(20), default="pending")  # pending / approved / rejected
+    status = db.Column(db.String(20), default="pending", index=True)  # pending / approved / rejected
     decision_note = db.Column(db.Text, default="")
     decided_by = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     decided_at = db.Column(db.DateTime, nullable=True)
 
-    requester = db.relationship("User", foreign_keys=[user_id])
-    reviewer = db.relationship("User", foreign_keys=[decided_by])
+    requester = db.relationship("User", foreign_keys=[user_id], lazy="joined")
+    reviewer = db.relationship("User", foreign_keys=[decided_by], lazy="joined")
 
 
 class ClubRole(db.Model):
@@ -212,7 +221,7 @@ class ClubMessage(db.Model):
     deleted_at = db.Column(db.DateTime, nullable=True)
     deleted_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
 
-    sender = db.relationship("User", foreign_keys=[sender_id])
+    sender = db.relationship("User", foreign_keys=[sender_id], lazy="joined")
     deleted_by = db.relationship("User", foreign_keys=[deleted_by_id])
 
     @property
@@ -343,6 +352,16 @@ class Event(db.Model):
         # spacing keeps neighboring ids visually distinct).
         return self.club.hue if self.club else 265
 
+    @property
+    def attendee_preview(self):
+        """First few attendees for face stacks. Populated in bulk by
+        load_attendee_previews(); falls back to the relationship for a
+        single event that wasn't batched."""
+        cached = getattr(self, "_attendee_preview", None)
+        if cached is not None:
+            return cached
+        return [r.user for r in self.rsvps[:5]]
+
     # attendee_count is a SQL column_property (defined at the bottom of this
     # module); these two derive from it.
     @property
@@ -375,7 +394,7 @@ class SavedClub(db.Model):
     kind = db.Column(db.String(10), default="saved", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    club = db.relationship("Club")
+    club = db.relationship("Club", lazy="joined")
     user = db.relationship(
         "User", backref=db.backref("saved_clubs", cascade="all, delete-orphan")
     )
@@ -445,3 +464,40 @@ Event.attendee_count = db.column_property(
     .correlate_except(RSVP)
     .scalar_subquery()
 )
+
+
+def load_attendee_previews(events, limit=5):
+    """Attach the first `limit` attendees to each event in one query.
+
+    Face stacks on list pages used to lazy-load every RSVP and its user —
+    ~2 queries per event, ~100 per dashboard. A ROW_NUMBER window keeps it
+    to one round-trip and at most `limit` rows per event (SQLite ≥ 3.25
+    and Postgres both support it).
+    """
+    events = [e for e in events if e is not None]
+    if not events:
+        return events
+    ids = [e.id for e in events]
+    ranked = (
+        select(
+            RSVP.event_id,
+            RSVP.user_id,
+            func.row_number().over(
+                partition_by=RSVP.event_id, order_by=(RSVP.created_at, RSVP.id)
+            ).label("rn"),
+        )
+        .where(RSVP.event_id.in_(ids))
+        .subquery()
+    )
+    rows = db.session.execute(
+        select(ranked.c.event_id, User)
+        .join(User, User.id == ranked.c.user_id)
+        .where(ranked.c.rn <= limit)
+        .order_by(ranked.c.event_id, ranked.c.rn)
+    ).all()
+    by_event = {}
+    for event_id, user in rows:
+        by_event.setdefault(event_id, []).append(user)
+    for event in events:
+        event._attendee_preview = by_event.get(event.id, [])
+    return events

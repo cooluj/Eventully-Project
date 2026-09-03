@@ -16,7 +16,15 @@ def _mark_thread_read(club_id):
         marker.last_read_at = datetime.utcnow()
     else:
         db.session.add(ThreadRead(user_id=current_user.id, club_id=club_id))
-    db.session.commit()
+    # Keep the user's already-loaded clubs/roles warm through the commit:
+    # nothing else in this request writes, and expiring them re-ran six
+    # queries the page had just made.
+    session = db.session()
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = True
 
 
 def _can_access_club_messages(club):
@@ -121,13 +129,15 @@ def thread(club_id):
         flash("Message sent.", "success")
         return redirect(url_for("messages.thread", club_id=club.id))
 
+    # Mark read before loading anything: the commit expires every loaded
+    # row, so doing it last re-fetched the user's clubs and roles twice.
+    _mark_thread_read(club.id)
     thread_messages = (
         ClubMessage.query
         .filter_by(club_id=club.id)
         .order_by(ClubMessage.created_at.asc())
         .all()
     )
-    _mark_thread_read(club.id)
     conversations = _message_clubs()
     return render_template(
         "messages.html",

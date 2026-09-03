@@ -144,7 +144,7 @@ The end-to-end suite covers registration, login, email verification, password re
 The repo includes a **`render.yaml` Blueprint**. On [Render.com](https://render.com):
 
 1. Push this repo to GitHub.
-2. **New → Blueprint**, connect the repo. Render provisions the web service + a free Postgres database, generates `SECRET_KEY`, and wires everything automatically.
+2. **New → Blueprint**, connect the repo. Render provisions the Starter web service and generates `SECRET_KEY`. Create a **paid** Postgres instance separately and set `DATABASE_URL` to its internal connection string (free Render databases self-delete after 30 days).
 3. When prompted, set `ADMIN_EMAILS` to **your** email — that's who approves club claims.
 4. Configure SMTP env vars if you want verification/reset/notification email to send instead of logging.
 5. First boot auto-creates tables and loads all 1,231 clubs (`AUTO_SEED`). Your app is live at the `.onrender.com` URL; add a custom domain in Settings if you want one.

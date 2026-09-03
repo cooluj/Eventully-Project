@@ -85,7 +85,7 @@
     <p class="muted" style="margin-bottom:14px; font-size:0.9rem;">Permanently removes your account,
       memberships, RSVPs, and saved clubs. Clubs you officer become unclaimed. This can't be undone.</p>
     <form method="POST" action="{{ url_for('auth.delete_account') }}"
-          onsubmit="return confirm('Delete your account permanently? This cannot be undone.');">
+          data-confirm="Delete your account permanently? This cannot be undone.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field" style="max-width:280px;">
         <label for="delete_password">Confirm with your password</label>

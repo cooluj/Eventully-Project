@@ -27,11 +27,11 @@
 {% endmacro %}
 
 {% macro attendee_stack(event, size=4) %}
-  {% set rsvps = event.rsvps[:size] %}
   {% if event.attendee_count %}
+    {% set people = event.attendee_preview[:size] %}
     <span class="avatar-stack" aria-label="{{ event.attendee_count }} going">
-      {% for r in rsvps %}<span class="person">{{ r.user.name[0]|upper }}</span>{% endfor %}
-      {% if event.attendee_count > size %}<span class="person more">+{{ event.attendee_count - size }}</span>{% endif %}
+      {% for person in people %}<span class="person">{{ person.name[0]|upper }}</span>{% endfor %}
+      {% if event.attendee_count > people|length %}<span class="person more">+{{ event.attendee_count - people|length }}</span>{% endif %}
     </span>
   {% endif %}
 {% endmacro %}
@@ -64,9 +64,10 @@
         {{ attendee_stack(event) }}
       </div>
     </div>
-    <span class="event-row-thumb {{ 'placeholder' if not event.image_url }}"
-          {% if event.image_url %}style="background-image:url('{{ event.image_url }}'), var(--cover-art)"{% endif %}>
-      {%- if not event.image_url %}{{ event.club.avatar_letter }}{% endif -%}
+    <span class="event-row-thumb {{ 'placeholder' if not event.image_url }}">
+      {%- if event.image_url -%}
+        <img src="{{ event.image_url }}" alt="" loading="lazy" decoding="async" width="120" height="120">
+      {%- else -%}{{ event.club.avatar_letter }}{%- endif -%}
     </span>
   </a>
 {% endmacro %}

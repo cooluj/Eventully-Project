@@ -1,3 +1,5 @@
+import threading
+import time
 from datetime import datetime, timedelta
 from urllib.parse import quote_plus, urlencode, urljoin, urlparse
 from zoneinfo import ZoneInfo
@@ -47,23 +49,61 @@ def day_label(day, today):
     return day.strftime("%A")
 
 
-def group_events_by_day(events, now=None):
+def group_events_by_day(events, now=None, start=None):
     """Luma-style timeline grouping: ordered [(date, label, sublabel, events)].
 
-    Weekly events materialize on their next occurrence date. Input should
-    already be upcoming-only and sorted (see split_upcoming).
+    Weekly events materialize on their next occurrence from `start` (defaults
+    to now, so a future window pages them forward). Labels stay relative to
+    the real today. Input should be upcoming-only (see split_upcoming).
     """
     now = now or campus_now()
+    start = start or now
     today = now.date()
+    placed = sorted(
+        ((event.next_occurrence(start), event) for event in events),
+        key=lambda pair: (pair[0], pair[1].name or ""),
+    )
     groups = []
-    for event in events:
-        day = event.next_occurrence(now).date()
+    for occurrence, event in placed:
+        day = occurrence.date()
         if groups and groups[-1][0] == day:
             groups[-1][3].append(event)
         else:
             sub = day.strftime("%b %d").replace(" 0", " ")
             groups.append((day, day_label(day, today), sub, [event]))
     return groups
+
+
+def window_events(upcoming, start, end):
+    """Events with an occurrence inside [start, end) when viewed from `start`.
+
+    Weekly events always have one occurrence in any window of 7+ days;
+    one-time events fall in exactly one window.
+    """
+    return [e for e in upcoming if start <= e.next_occurrence(start) < end]
+
+
+# Tiny in-process TTL memo for read-mostly aggregates (club count, category
+# list). Single-worker deploy; a few minutes of staleness is invisible.
+_memo = {}
+_memo_lock = threading.Lock()
+
+
+def ttl_cached(key, ttl, compute):
+    now = time.time()
+    with _memo_lock:
+        hit = _memo.get(key)
+        if hit and now - hit[0] < ttl:
+            return hit[1]
+    value = compute()
+    with _memo_lock:
+        _memo[key] = (now, value)
+    return value
+
+
+def clear_ttl_cache():
+    with _memo_lock:
+        _memo.clear()
 
 
 def is_safe_next_url(target, host_url):

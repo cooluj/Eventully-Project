@@ -2,9 +2,9 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Club, ClubClaim, Membership, SavedClub
+from models import Club, ClubClaim, Membership, SavedClub, load_attendee_previews
 from notifications import send_email
-from utils import group_events_by_day, is_safe_next_url, parse_page, split_upcoming
+from utils import group_events_by_day, is_safe_next_url, parse_page, split_upcoming, ttl_cached
 
 bp = Blueprint("clubs", __name__)
 
@@ -41,7 +41,10 @@ def browse():
     clubs_list = query.offset(page * per_page).limit(per_page).all()
     has_more = (page + 1) * per_page < total
 
-    categories = ["all"] + [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()]
+    categories = ["all"] + ttl_cached(
+        "club-categories", 600,
+        lambda: [c[0] for c in db.session.query(Club.category).distinct().order_by(Club.category).all()],
+    )
     joined_ids = current_user.joined_club_ids if current_user.is_authenticated else set()
     saved_ids = current_user.saved_club_ids if current_user.is_authenticated else set()
 
@@ -97,6 +100,7 @@ def detail(club_id):
              or (current_user.is_authenticated and club.id in current_user.joined_club_ids))
     ]
     upcoming, past = split_upcoming(visible_events)
+    load_attendee_previews(upcoming)
 
     return render_template(
         "club_detail.html",

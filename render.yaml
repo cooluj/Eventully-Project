@@ -1,13 +1,17 @@
 # Render Blueprint — one-click deploy.
 # In Render: New → Blueprint → connect this repo. It provisions the web
-# service and a free Postgres database, wires DATABASE_URL, and generates
-# a SECRET_KEY. On first boot the app creates tables and loads all 1,231
-# clubs automatically (AUTO_SEED).
+# service and generates a SECRET_KEY. On first boot the app creates tables
+# and loads all 1,231 clubs automatically (AUTO_SEED).
+#
+# The production service (eventully.org) runs on the Starter plan against a
+# PAID Postgres instance (eventully-db-prod). Never point it at a free
+# Render Postgres: those are deleted 30 days after creation, which is how
+# the July launch data was lost.
 services:
   - type: web
     name: eventully
     runtime: python
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
     # Single process (the in-memory rate limiter is per-process) with threads
     # so one slow request doesn't serialize the whole site.
@@ -16,8 +20,9 @@ services:
     envVars:
       - key: SECRET_KEY
         generateValue: true
-      # Point this at an external Postgres (e.g. Neon free tier — Render's own
-      # free Postgres is deleted 30 days after creation). Set in the dashboard.
+      # The paid Postgres instance's internal connection string. Set in the
+      # dashboard — deliberately not provisioned here so a blueprint re-apply
+      # can't swap it for a free (auto-deleting) database.
       - key: DATABASE_URL
         sync: false
       - key: FLASK_DEBUG
@@ -37,6 +42,10 @@ services:
       # Render — other hosts then 301 to it.
       - key: CANONICAL_HOST
         sync: false
+      # Shared secret for the scheduled digest/reminder endpoints; the same
+      # value goes in the GitHub Actions secret TASKS_TOKEN.
+      - key: TASKS_TOKEN
+        sync: false
       # Configure these to enable verification, reset, claim, team, and message emails.
       - key: MAIL_SERVER
         sync: false
@@ -50,7 +59,3 @@ services:
         sync: false
       - key: MAIL_USE_TLS
         value: "true"
-
-databases:
-  - name: eventully-db
-    plan: free

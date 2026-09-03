@@ -82,13 +82,13 @@
                   <a href="{{ url_for('officer.edit_event', event_id=event.id) }}" class="btn btn-ghost btn-sm">Edit</a>
                   {% if not event.is_cancelled %}
                     <form method="POST" action="{{ url_for('officer.cancel_event', event_id=event.id) }}"
-                          onsubmit="return confirm('Cancel this event? Everyone registered will be notified.');">
+                          data-confirm="Cancel this event? Everyone registered will be notified.">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="btn btn-ghost btn-sm">Cancel</button>
                     </form>
                   {% endif %}
                   {% if event.is_cancelled or not event.attendee_count %}
-                    <form method="POST" action="{{ url_for('officer.delete_event', event_id=event.id) }}" onsubmit="return confirm('Delete this event permanently?');">
+                    <form method="POST" action="{{ url_for('officer.delete_event', event_id=event.id) }}" data-confirm="Delete this event permanently?">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="btn btn-brick btn-sm">Delete</button>
                     </form>
