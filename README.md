@@ -1,12 +1,14 @@
 # Eventully — Club Discovery for UW
 
-A web platform that helps University of Washington students discover clubs from a real, 1,231-organization directory, matched to their interests, major, and time commitment — and lets club officers claim and run their own listing.
+**Live product:** https://eventully.org
+
+Eventully is a live web platform that helps University of Washington students discover clubs from a real, 1,231-organization directory, matched to their interests, major, and time commitment — and lets club officers claim and manage their own listing.
+
+This repository contains the production application behind **eventully.org**. What began as a class project was rebuilt into a deployed product with persistent accounts and data, officer/admin workflows, events and RSVPs, messaging, authentication and recovery, testing, and production deployment infrastructure.
 
 ---
 
-## What's here
-
-This is a full rebuild of the original class project into a real, deployable application:
+## Product overview
 
 - **Real accounts** — email + hashed password (Flask-Login + Werkzeug), not just an email field
 - **Persistent database** (SQLite by default, swaps to Postgres by setting one env var) — nothing resets when the server restarts
@@ -43,7 +45,7 @@ eventully/
 └── .env.example
 ```
 
-## Running it locally
+## Local development
 
 ```bash
 python3 -m venv venv
@@ -57,7 +59,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 python3 app.py
 ```
 
-Visit **http://127.0.0.1:5050**. On first run it creates `eventully.db` and loads all 1,231 clubs automatically. A demo account is seeded too:
+Visit **http://127.0.0.1:5050** for local development. On first run it creates `eventully.db` and loads all 1,231 clubs automatically. A local demo account is seeded too:
 
 - **Email:** `demo@uw.edu`
 - **Password:** `demopass123`
@@ -104,12 +106,15 @@ The app is wired for SMTP, but inbox delivery only works after you attach a prov
 
 After saving those values, open `/admin/launch-readiness` as an admin and click **Send test email**. Only turn `EMAIL_VERIFICATION_REQUIRED=true` after the test email reaches your inbox.
 
-### Custom domain
+### Production domain
 
-1. Buy the domain (Cloudflare Registrar sells at cost and its DNS handles the apex-CNAME problem; Porkbun/Namecheap also work).
-2. In Render: service → **Settings → Custom Domains** → add the domain (and `www.` if you want it). Render shows the DNS records to add and provisions TLS automatically once they resolve.
-3. In Resend: **Domains → Add Domain**, then add the SPF/DKIM records it lists at your DNS provider and hit Verify. Set `MAIL_FROM` to `Eventully <hello@yourdomain>`.
-4. Set `CANONICAL_HOST` (e.g. `eventully.org`) in Render — every other host (like the `.onrender.com` URL) then 301s to it. `/healthz` is exempt so Render's health checks keep passing.
+Eventully is live at **https://eventully.org**. The production deployment uses a canonical-host redirect so alternate hosts resolve back to the primary domain while `/healthz` remains available for infrastructure health checks.
+
+If you are reproducing the deployment in a new environment:
+
+1. Add the custom domain in Render under **Settings → Custom Domains** and configure the DNS records Render provides.
+2. In Resend, verify the sending domain with the required SPF/DKIM records and set `MAIL_FROM` to an address on that verified domain.
+3. Set `CANONICAL_HOST=eventully.org` (or the replacement production domain) so alternate hosts redirect to the canonical URL.
 
 ### Staying warm on the free tier
 
@@ -131,15 +136,15 @@ Render's free tier spins the app down after 15 idle minutes (~50s cold start for
 
 The end-to-end suite covers registration, login, email verification, password reset, onboarding + matching, join/leave, RSVP + capacity limits, the full claim → approve → officer lifecycle, co-officer access, messages, permission walls, and CSRF rejection.
 
-## Deploying it for real (one click)
+## Deployment / redeploying
 
-The repo includes a **`render.yaml` Blueprint**. On [Render.com](https://render.com):
+The production product is already live at **https://eventully.org**. The repo includes a **`render.yaml` Blueprint** so the environment can be reproduced or redeployed on [Render.com](https://render.com):
 
 1. Push this repo to GitHub.
 2. **New → Blueprint**, connect the repo. Render provisions the web service + a free Postgres database, generates `SECRET_KEY`, and wires everything automatically.
 3. When prompted, set `ADMIN_EMAILS` to **your** email — that's who approves club claims.
 4. Configure SMTP env vars if you want verification/reset/notification email to send instead of logging.
-5. First boot auto-creates tables and loads all 1,231 clubs (`AUTO_SEED`). Your app is live at the `.onrender.com` URL; add a custom domain in Settings if you want one.
+5. First boot auto-creates tables and loads all 1,231 clubs (`AUTO_SEED`). Configure the canonical production domain after the service is healthy.
 
 Railway and Fly.io also work: add a Postgres add-on, set `DATABASE_URL` and the env vars above, start command `gunicorn --workers 1 --threads 8 --timeout 60 app:app`.
 
